@@ -1,0 +1,483 @@
+{
+  "name": "🗃️ SUB · Inventory Lookup (Rivas Motors - Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "modelo"
+            },
+            {
+              "name": "user_id_canal"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        3472,
+        1632
+      ],
+      "id": "1d87d544-4465-4b5f-86fc-683fa52a54f6",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "inv_cached",
+        "key": "=inventario:{{ $json.modelo }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3696,
+        1632
+      ],
+      "id": "2a5750f3-2177-451d-8be3-fa4d16c368e1",
+      "name": "Redis · Get Inventory Cache",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1000000-aaaa-bbbb-cccc-000000000001",
+              "leftValue": "={{ $json.inv_cached }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3920,
+        1632
+      ],
+      "id": "c14d42d4-62be-4db1-bc03-6adbb7ced821",
+      "name": "If · Cache Hit?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cached = $json.inv_cached;\ntry {\n  const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;\n  return [{ json: { ...parsed, _from_cache: true } }];\n} catch (e) {\n  return [{ json: { ok: false, _from_cache: false, _parse_error: e.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4160,
+        1488
+      ],
+      "id": "3d890c7a-19a2-44f0-a19a-0a26eb228bc5",
+      "name": "Code · Parse Cache"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDDVZuC2hVbFNo",
+          "mode": "list",
+          "cachedResultName": "Modelos",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblVDDVZuC2hVbFNo"
+        },
+        "filterByFormula": "={activo} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4160,
+        1696
+      ],
+      "id": "725d7454-7352-43c3-8a33-f314ca870a8d",
+      "name": "Airtable · Get Active Models",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function F(rec){ return (rec && rec.fields && typeof rec.fields==='object') ? rec.fields : (rec||{}); }\nfunction norm(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\bBAJAJ\\b/g,' ').replace(/[^A-Z0-9]+/g,' ').trim();}\nfunction toks(s){return norm(s).split(' ').filter(Boolean);}\nvar CC_LIST=[100,110,125,150,160,180,200,220,250,400];\nfunction extractCC(s){\n  var t=norm(s);\n  var nums=(t.match(/\\d{3}/g)||[]).map(Number);\n  for(var i=0;i<nums.length;i++){ if(CC_LIST.indexOf(nums[i])>=0) return nums[i]; }\n  var z=t.match(/(\\d{3})Z/); if(z && CC_LIST.indexOf(Number(z[1]))>=0) return Number(z[1]);\n  return null;\n}\nfunction extractVariant(s){\n  var t=' '+norm(s)+' ';\n  if(/\\bNS\\d{2,3}\\b/.test(t) || /\\bNS\\b/.test(t)) return 'NS';\n  if(/\\bN\\d{2,3}\\b/.test(t) || /\\bN\\b/.test(t))  return 'N';\n  if(/\\bF\\d{2,3}\\b/.test(t) || /\\bF\\b/.test(t))  return 'F';\n  if(/\\bRS\\d{2,3}\\b/.test(t) || /\\bRS\\b/.test(t)) return 'RS';\n  return '';\n}\nfunction familyOf(s){ var tk=toks(s); return tk.length?tk[0]:''; }\n\nconst input = $('When Executed by Another Workflow').first().json.modelo || '';\nconst models = $input.all().map(i=>i.json).filter(m=>m && m.id);\nconst inNorm = norm(input);\nconst inCC = extractCC(input);\nconst inVar = extractVariant(input);\nconst inFam = familyOf(input);\nconst inSet = new Set(toks(input));\n\nfunction score(name){\n  if(norm(name) === inNorm) return 1000;\n  const cc=extractCC(name), va=extractVariant(name), fam=familyOf(name);\n  let s=0;\n  if(inFam && fam===inFam) s+=40;\n  if(inCC && cc===inCC) s+=40;\n  if(inVar && va===inVar) s+=25;\n  const nset=new Set(toks(name));\n  for(const t of inSet){ if(nset.has(t)) s+=3; }\n  return s;\n}\n\n// Score all models\nconst scored = models.map(m => {\n  const f = F(m);\n  const nombre = f.nombre || '';\n  return { model: m, nombre, score: score(nombre), f };\n}).filter(x => x.score >= 40).sort((a,b) => b.score - a.score);\n\n// Dedup by name (same model in 2025 + 2026)\nconst seen = {};\nconst unique = [];\nfor(const s of scored){\n  if(!seen[s.nombre]){ seen[s.nombre]=true; unique.push(s); }\n}\n\n// ── Exact match (score 1000) ──\nif(unique.length > 0 && unique[0].score === 1000){\n  const f = unique[0].f; const cn = f.nombre || '';\n  return [{ json: {\n    matched:true, ambiguous:false, match_type:'exacto',\n    modelo:cn, precio:(f.precio??null), categoria:(f.categoria??null),\n    cilindrada_cc:(f.cilindrada_cc??extractCC(cn)),\n    familia:familyOf(cn), cc:extractCC(cn), variante:extractVariant(cn),\n    _diag_models:models.length\n  }}];\n}\n\n// ── Ambiguity check: multiple models tied within 10 pts ──\nif(unique.length > 1){\n  const topScore = unique[0].score;\n  const tied = unique.filter(x => x.score >= topScore - 10);\n  if(tied.length > 1){\n    const candidates = tied.map(x => ({\n      nombre: x.nombre,\n      precio: x.f.precio ?? null,\n      precio_formato: x.f.precio != null ? '$'+Number(x.f.precio).toLocaleString('en-US') : null,\n      categoria: x.f.categoria ?? null,\n      cilindrada_cc: x.f.cilindrada_cc ?? extractCC(x.nombre),\n      descripcion: x.f.descripcion ?? ''\n    }));\n    return [{ json: {\n      matched:false, ambiguous:true, match_type:'ambiguo',\n      modelo:input, candidates,\n      familia:inFam, cc:inCC, variante:inVar,\n      cilindrada_cc:inCC, precio:null, categoria:null,\n      _diag_models:models.length\n    }}];\n  }\n}\n\n// ── Single best match ──\nif(unique.length > 0){\n  const f = unique[0].f; const cn = f.nombre || '';\n  return [{ json: {\n    matched:true, ambiguous:false, match_type:'parcial',\n    modelo:cn, precio:(f.precio??null), categoria:(f.categoria??null),\n    cilindrada_cc:(f.cilindrada_cc??extractCC(cn)),\n    familia:familyOf(cn), cc:extractCC(cn), variante:extractVariant(cn),\n    _diag_models:models.length\n  }}];\n}\n\n// ── No match ──\nreturn [{ json: {\n  matched:false, ambiguous:false, match_type:'sin_match',\n  modelo:input, precio:null, categoria:null,\n  cilindrada_cc:inCC, familia:inFam, cc:inCC, variante:inVar,\n  _diag_models:models.length\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4384,
+        1696
+      ],
+      "id": "899531a5-60af-40c4-ae8e-57e9e11ce489",
+      "name": "Code · Resolve Model"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblw7fgsL3fAWjW5h",
+          "mode": "list",
+          "cachedResultName": "Inventario",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblw7fgsL3fAWjW5h"
+        },
+        "filterByFormula": "=UPPER({familia_modelo}) = \"{{ $json.familia }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4608,
+        1696
+      ],
+      "id": "d08b2ced-1ea6-425a-9f04-28e7d5e2cb8d",
+      "name": "Airtable · Get Inventory by Family",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl92B5KJskwxUM1b"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4832,
+        1696
+      ],
+      "id": "1171e501-c675-4d36-813c-debc771c96bc",
+      "name": "Airtable · Get All Branches",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function F(rec){ return (rec && rec.fields && typeof rec.fields==='object') ? rec.fields : (rec||{}); }\nfunction norm(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\bBAJAJ\\b/g,' ').replace(/[^A-Z0-9]+/g,' ').trim();}\nfunction toks(s){return norm(s).split(' ').filter(Boolean);}\nvar CC_LIST=[100,110,125,150,160,180,200,220,250,400];\nfunction extractCC(s){\n  var t=norm(s); var nums=(t.match(/\\d{3}/g)||[]).map(Number);\n  for(var i=0;i<nums.length;i++){ if(CC_LIST.indexOf(nums[i])>=0) return nums[i]; }\n  var z=t.match(/(\\d{3})Z/); if(z && CC_LIST.indexOf(Number(z[1]))>=0) return Number(z[1]);\n  return null;\n}\nfunction extractVariant(s){\n  var t=' '+norm(s)+' ';\n  if(/\\bNS\\d{2,3}\\b/.test(t) || /\\bNS\\b/.test(t)) return 'NS';\n  if(/\\bN\\d{2,3}\\b/.test(t) || /\\bN\\b/.test(t))  return 'N';\n  if(/\\bF\\d{2,3}\\b/.test(t) || /\\bF\\b/.test(t))  return 'F';\n  if(/\\bRS\\d{2,3}\\b/.test(t) || /\\bRS\\b/.test(t)) return 'RS';\n  return '';\n}\nfunction familyOf(s){ var tk=toks(s); return tk.length?tk[0]:''; }\n\nconst trig = $('When Executed by Another Workflow').first().json;\nconst r = $('Code · Resolve Model').first().json;\n\n// ═══ AMBIGUO: devolver candidatos sin inventario detallado ═══\nif(r.ambiguous === true){\n  const nombres = (r.candidates||[]).map(c => c.nombre);\n  return [{ json: {\n    ok: true,\n    match_type: 'ambiguo',\n    modelo_buscado: r.modelo,\n    candidatos: r.candidates,\n    num_candidatos: nombres.length,\n    mensaje_agente: 'No encontré un modelo exacto llamado \"' + r.modelo + '\". Hay '\n      + nombres.length + ' opciones: ' + nombres.join(', ')\n      + '. Pregúntale al cliente cuál le interesa para darte la disponibilidad exacta.',\n    disponibles: null, por_sucursal: [], situacion: 'ambiguo',\n    precio: null, precio_formato: null, cilindrada_cc: r.cilindrada_cc,\n    categoria: null, baja_disponibilidad: false,\n    _from_cache: false, _diag: { modelos: r._diag_models }\n  }}];\n}\n\n// ═══ FLUJO NORMAL (exacto o parcial) ═══\nconst tCC = r.cc, tVar = r.variante, tFam = r.familia;\n\nlet invRows=[]; try{ invRows = $('Airtable · Get Inventory by Family').all().map(i=>i.json).filter(x=>x && x.id); }catch(e){}\nlet branches=[]; try{ branches = $('Airtable · Get All Branches').all().map(i=>F(i.json)).filter(b=>b.sucursal_id); }catch(e){}\nconst branchById={}; for(const b of branches){ branchById[String(b.sucursal_id)] = b; }\n\nfunction rowMatches(f){\n  const fam=familyOf(f.familia_modelo||f.nombre_modelo);\n  const cc=extractCC(f.nombre_modelo);\n  const va=extractVariant(f.nombre_modelo);\n  if(tFam && fam!==tFam) return false;\n  if(tCC && cc!==tCC) return false;\n  if(tVar && va!==tVar) return false;\n  return true;\n}\n\nconst groups={}; let disponibles=0;\nfor(const row of invRows){\n  const f=F(row); if(!rowMatches(f)) continue;\n  const c=Number(f.cantidad); const u=(!isNaN(c)&&c>0)?c:1; disponibles+=u;\n  const sid=String(f.sucursal_id||'');\n  const b=branchById[sid];\n  const key= sid || ('I:'+(f.sucursal_nombre||'?'));\n  if(!groups[key]){\n    groups[key]= b ? { sucursal_id:b.sucursal_id, sucursal_nombre:(b.nombre||f.sucursal_nombre||''), ciudad:(b.ciudad||''),\n                       direccion:(b.direccion||''), google_maps:(b.google_maps||''), horario:(b.horario||''), unidades:0, resuelta:true }\n                   : { sucursal_id:(f.sucursal_id||null), sucursal_nombre:(f.sucursal_nombre||''), ciudad:'', unidades:0, resuelta:false };\n  }\n  groups[key].unidades += u;\n}\nconst por_sucursal = Object.values(groups).sort((a,b)=>b.unidades-a.unidades);\n\nconst precio = (r.precio===''?null:(r.precio??null));\nlet situacion='disponible'; if(disponibles===0) situacion='agotado'; else if(disponibles<=3) situacion='pocas';\nconst ok = (r.matched===true) || disponibles>0;\nconst result={ ok, match_type:(r.match_type||'parcial'),\n  modelo:(r.modelo||trig.modelo), disponibles, por_sucursal, num_sucursales_con_stock:por_sucursal.length,\n  precio, precio_formato:(precio!=null?'$'+Number(precio).toLocaleString('en-US'):null),\n  cilindrada_cc:(r.cilindrada_cc??null), categoria:(r.categoria??null),\n  baja_disponibilidad:(disponibles>0 && disponibles<=3), situacion,\n  _diag:{ modelos:(r._diag_models??null), inv_familia:invRows.length, sucursales:branches.length }, _from_cache:false };\nif(!ok) result.error='modelo_no_encontrado';\nreturn [{ json: result }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5056,
+        1696
+      ],
+      "id": "4a0195f3-32f7-4241-90e3-427c892d1b1c",
+      "name": "Code · Build Inventory Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "okgate-0001-0001-0001-invokgate00001",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5280,
+        1696
+      ],
+      "id": "0c544f53-4a9a-4aca-a2a3-b380b61334a2",
+      "name": "If · OK?"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=inventario:{{ $('When Executed by Another Workflow').first().json.modelo }}",
+        "value": "={{ JSON.stringify($json) }}",
+        "expire": true,
+        "ttl": 3600
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        5504,
+        1568
+      ],
+      "id": "ed0aeded-e18f-424e-a585-10e113e69d6e",
+      "name": "Redis · Save Inventory Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5504,
+        1792
+      ],
+      "id": "868d9f4f-a619-4aff-8320-8f26ea0814a5",
+      "name": "NoOp · No Cache (fail)"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "modelo": "Avenger Cruise 220",
+          "user_id_canal": "+5219995062385"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis · Get Inventory Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Get Inventory Cache": {
+      "main": [
+        [
+          {
+            "node": "If · Cache Hit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Cache Hit?": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Active Models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Active Models": {
+      "main": [
+        [
+          {
+            "node": "Code · Resolve Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Resolve Model": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Inventory by Family",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Inventory by Family": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get All Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get All Branches": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Inventory Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Build Inventory Output": {
+      "main": [
+        [
+          {
+            "node": "If · OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · OK?": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Inventory Cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · No Cache (fail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "c587b544-0ff5-4f44-84d8-67affcf1d786",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "sDKToIjcDfhazbNV",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

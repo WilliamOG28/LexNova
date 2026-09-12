@@ -1,0 +1,1109 @@
+{
+  "name": "💦 SUB · Lead Hydrator (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "channel"
+            },
+            {
+              "name": "sender_name"
+            },
+            {
+              "name": "conversation_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -4272,
+        1952
+      ],
+      "id": "e434f802-61d4-4106-9a41-c4b38db9de32",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "cached_financieras",
+        "key": "financieras:activas",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -2480,
+        1952
+      ],
+      "id": "131791a6-4815-4c02-a298-fc37e71a35f4",
+      "name": "Redis · Get Financieras Cache",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fin-cache-hit-c",
+              "leftValue": "={{ $json.cached_financieras }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2256,
+        1952
+      ],
+      "id": "09090867-f314-415b-8546-c6f747f32ac5",
+      "name": "If · Financieras Cache Hit?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse las financieras cacheadas de Redis\nconst raw = $json.cached_financieras;\nlet financieras_disponibles = [];\ntry {\n  financieras_disponibles = JSON.parse(raw);\n} catch(e) {\n  financieras_disponibles = [];\n}\nreturn [{ json: { financieras_disponibles, _financieras_from_cache: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1584,
+        1856
+      ],
+      "id": "c57a5624-b4e0-4024-ae73-0d92e94436ec",
+      "name": "Code · Parse Cached Financieras"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnzq7bM3Dh84R7U",
+          "mode": "list",
+          "cachedResultName": "Financieras",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblnzq7bM3Dh84R7U"
+        },
+        "filterByFormula": "={activa}",
+        "options": {},
+        "sort": {
+          "property": [
+            {
+              "field": "orden"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2032,
+        2048
+      ],
+      "id": "40ae948a-105b-4906-a4aa-4db588908a44",
+      "name": "Airtable · Get Financieras Activas",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formatear el output de Airtable en un array digestible por el agente\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\n\nconst items = $input.all();\nconst financieras_disponibles = items\n  .map(it => {\n    const f = F(it.json);\n    return {\n      nombre: f.nombre || '',\n      nombre_corto: f.nombre_corto || f.nombre || '',\n      orden: Number(f.orden) || 99,\n      descripcion_agente: f.descripcion_agente || '',\n      ventajas_clave: f.ventajas_clave || '',\n      requisitos_resumen: f.requisitos_resumen || '',\n      plazos_disponibles: f.plazos_disponibles || '',\n      plazos_valores: f.plazos_valores || '',\n      enganche_minimo_pct: Number(f.enganche_minimo_pct) || null,\n      flyer_disponible: Array.isArray(f.flyer) && f.flyer.length > 0\n    };\n  })\n  .filter(f => f.nombre)\n  .sort((a,b) => a.orden - b.orden);\n\nreturn [{ json: { financieras_disponibles, _financieras_from_cache: false } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1808,
+        2048
+      ],
+      "id": "66a4a00b-2ad4-4f53-9382-7ad126c1d20b",
+      "name": "Code · Format Financieras"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "financieras:activas",
+        "value": "={{ JSON.stringify($json.financieras_disponibles) }}",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 1800
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1584,
+        2048
+      ],
+      "id": "dc62fca4-a87c-44a7-983d-435444a4f99b",
+      "name": "Redis · Save Financieras Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge final: combina el lead (que viaja en el flujo desde el Set) con las financieras\n// El lead viene del nodo Redis · Save Lead Cache upstream (que preserva todo el payload).\n// Las financieras vienen del Code · Parse Cached Financieras o del Code · Format Financieras.\n\nconst leadNode = $('Redis · Save Lead Cache1').first().json;\nconst finsCurrent = $json;\n\n// El lead node puede o no traer todos los campos - los tomamos del Set upstream\n// que a su vez es el output del Redis · Get Lead Cache o de los Sets Found/Not Found.\n\n// Buscar el output \"canónico\" del lead - viene del Set · Lead Found o Set · Lead Not Found o Code · Parse Cached Lead\nlet lead = {};\ntry { lead = $('Set · Lead Found').first().json; } catch(e) {}\nif (!lead || !Object.keys(lead).length) {\n  try { lead = $('Set · Lead Not Found').first().json; } catch(e) {}\n}\nif (!lead || !Object.keys(lead).length) {\n  try { lead = $('Code · Parse Cached Lead1').first().json; } catch(e) {}\n}\n\nreturn [{ json: {\n  ...lead,\n  financieras_disponibles: finsCurrent.financieras_disponibles || [],\n  _financieras_from_cache: !!finsCurrent._financieras_from_cache\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1360,
+        1952
+      ],
+      "id": "15c591f3-e2a4-4b48-ad37-7561e08de038",
+      "name": "Code · Merge Lead & Financieras"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "lead_cached",
+        "key": "=lead:{{ $json.user_id_canal }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -4048,
+        1952
+      ],
+      "id": "9c6d85d8-9eb2-42f6-828e-dd0249c65a43",
+      "name": "Redis · Get Lead Cache1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8141d4a7-67ea-4ede-bdca-578568ecfa64",
+              "leftValue": "={{ $json.lead_cached }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3824,
+        1952
+      ],
+      "id": "a224c9f5-2879-4c7d-867b-d515937e5e69",
+      "name": "If · Cache Hit?1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cached = $json.lead_cached;\ntry {\n  const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;\n  return [{ json: { ...parsed, _from_cache: true } }];\n} catch (e) {\n  return [{ json: { lead_existe: false, _from_cache: false, _parse_error: e.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2928,
+        1760
+      ],
+      "id": "8ad9ea04-5747-4a61-875e-e08601a5e06f",
+      "name": "Code · Parse Cached Lead1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('When Executed by Another Workflow').item.json.user_id_canal }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3600,
+        2048
+      ],
+      "id": "9ac7be41-8ce3-409c-922e-f1837f097c9b",
+      "name": "Airtable · Search Lead1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "82e61ae9-fe0b-4932-bdc9-255385f5aa1d",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3376,
+        2048
+      ],
+      "id": "891f938a-6e2d-4b80-95ba-c5a1f6d630ee",
+      "name": "If · Lead Exists?1"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=lead:{{ $('When Executed by Another Workflow').item.json.user_id_canal }}",
+        "value": "={{ JSON.stringify($json) }}",
+        "expire": true,
+        "ttl": 3600
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -2704,
+        1952
+      ],
+      "id": "7fd1a83e-1ef1-4818-912b-e01aa4445a1e",
+      "name": "Redis · Save Lead Cache1",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('When Executed by Another Workflow').item.json.user_id_canal }}",
+            "nombre": "={{ $('When Executed by Another Workflow').item.json.sender_name }}",
+            "canal_origen": "={{ ({ whatsapp:'WhatsApp', instagram:'Instagram', facebook:'Facebook', webchat:'Otro', unknown:'Otro' })[String($('When Executed by Another Workflow').item.json.channel || '').toLowerCase()] || 'Otro' }}",
+            "fecha_primera_interaccion": "={{ $now.toISO() }}",
+            "ultima_interaccion": "={{ $now.toISO() }}",
+            "conversation_id": "={{ $('When Executed by Another Workflow').item.json.conversation_id }}",
+            "lead_score": 0,
+            "followups_count": 0,
+            "score_maximo": 0
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "canal_origen",
+              "displayName": "canal_origen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "WhatsApp",
+                  "value": "WhatsApp"
+                },
+                {
+                  "name": "Instagram",
+                  "value": "Instagram"
+                },
+                {
+                  "name": "Facebook",
+                  "value": "Facebook"
+                },
+                {
+                  "name": "Referido",
+                  "value": "Referido"
+                },
+                {
+                  "name": "Google",
+                  "value": "Google"
+                },
+                {
+                  "name": "Portal inmobiliario",
+                  "value": "Portal inmobiliario"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score_maximo",
+              "displayName": "score_maximo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "followups_count",
+              "displayName": "followups_count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_primera_interaccion",
+              "displayName": "fecha_primera_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3152,
+        2144
+      ],
+      "id": "8f235665-4e21-4c52-94ff-5b41d10d006e",
+      "name": "Airtable · Create Lead1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead_existe-rm",
+              "name": "lead_existe",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "lead_id-rm",
+              "name": "lead_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "cliente_nombre_registrado-rm",
+              "name": "cliente_nombre_registrado",
+              "value": "={{ $json.fields?.nombre || $json.nombre || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "lead_score-rm",
+              "name": "lead_score",
+              "value": "={{ $json.fields?.lead_score ?? $json.lead_score ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "etapa_pipeline-rm",
+              "name": "etapa_pipeline",
+              "value": "={{ $json.fields?.etapa_pipeline || $json.etapa_pipeline || 'Contacto inicial' }}",
+              "type": "string"
+            },
+            {
+              "id": "modelo_interes-rm",
+              "name": "modelo_interes",
+              "value": "={{ $json.fields?.modelo_interes || $json.modelo_interes || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "categoria_interes-rm",
+              "name": "categoria_interes",
+              "value": "={{ $json.fields?.categoria_interes || $json.categoria_interes || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "uso_principal-rm",
+              "name": "uso_principal",
+              "value": "={{ $json.fields?.uso_principal || $json.uso_principal || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "forma_pago_preferida-rm",
+              "name": "forma_pago_preferida",
+              "value": "={{ $json.fields?.forma_pago_preferida || $json.forma_pago_preferida || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fin-estado-hyd-001",
+              "name": "financiera_estado",
+              "value": "={{ $json.fields?.financiera_estado || $json.financiera_estado || 'Sin enviar' }}",
+              "type": "string"
+            },
+            {
+              "id": "ciudad-rm",
+              "name": "ciudad",
+              "value": "={{ $json.fields?.ciudad || $json.ciudad || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ultima_intencion-rm",
+              "name": "ultima_intencion",
+              "value": "={{ $json.fields?.ultima_intencion || $json.ultima_intencion || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "lead_summary-rm",
+              "name": "lead_summary",
+              "value": "={{ $json.fields?.lead_summary || $json.lead_summary || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "signals_acumuladas-rm",
+              "name": "signals_acumuladas",
+              "value": "={{ $json.fields?.signals_acumuladas || $json.signals_acumuladas || '[]' }}",
+              "type": "string"
+            },
+            {
+              "id": "calificado-rm",
+              "name": "calificado",
+              "value": "={{ $json.fields?.calificado ?? $json.calificado ?? false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "bot_paused-rm",
+              "name": "bot_paused",
+              "value": "={{ $json.fields?.bot_paused ?? $json.bot_paused ?? false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "score_maximo-rm",
+              "name": "score_maximo",
+              "value": "={{ $json.fields?.score_maximo ?? $json.score_maximo ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "followups_count-rm",
+              "name": "followups_count",
+              "value": "={{ $json.fields?.followups_count ?? $json.followups_count ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "_from_cache-rm",
+              "name": "_from_cache",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "financiera-elegida-hyd",
+              "name": "financiera_elegida",
+              "value": "={{ $json.fields?.financiera_elegida || $json.financiera_elegida || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fa66bc5f-fdb3-4001-ba65-76f5de97b4b4",
+              "name": "sucursal_asignada",
+              "value": "={{ ($json.fields?.sucursal_asignada || $json.sucursal_asignada || [])[0] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b05859e9-a7df-4a83-9e64-350d843f630e",
+              "name": "colonia",
+              "value": "={{ $json.fields?.colonia || $json.colonia || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2928,
+        1952
+      ],
+      "id": "3673ef3e-2fd0-4d94-b575-3bb234c7a02d",
+      "name": "Set · Lead Found"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead_existe-rm",
+              "name": "lead_existe",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "lead_id-rm",
+              "name": "lead_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "cliente_nombre_registrado-rm",
+              "name": "cliente_nombre_registrado",
+              "value": "={{ $('When Executed by Another Workflow').item.json.sender_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "lead_score-rm",
+              "name": "lead_score",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "etapa_pipeline-rm",
+              "name": "etapa_pipeline",
+              "value": "Contacto inicial",
+              "type": "string"
+            },
+            {
+              "id": "modelo_interes-rm",
+              "name": "modelo_interes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "categoria_interes-rm",
+              "name": "categoria_interes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "uso_principal-rm",
+              "name": "uso_principal",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "forma_pago_preferida-rm",
+              "name": "forma_pago_preferida",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "ciudad-rm",
+              "name": "ciudad",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "ultima_intencion-rm",
+              "name": "ultima_intencion",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "lead_summary-rm",
+              "name": "lead_summary",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "signals_acumuladas-rm",
+              "name": "signals_acumuladas",
+              "value": "[]",
+              "type": "string"
+            },
+            {
+              "id": "calificado-rm",
+              "name": "calificado",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "bot_paused-rm",
+              "name": "bot_paused",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "score_maximo-rm",
+              "name": "score_maximo",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "followups_count-rm",
+              "name": "followups_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "_from_cache-rm",
+              "name": "_from_cache",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "_es_nuevo-rm",
+              "name": "_es_nuevo",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "financiera-elegida-hyd-nf",
+              "name": "financiera_elegida",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "bd560be9-b58c-4ac0-b90c-1aa680276e0c",
+              "name": "sucursal_asignada",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "5a56ebd8-7400-4438-a3ec-760b118bfa63",
+              "name": "colonia",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2928,
+        2144
+      ],
+      "id": "c6c6df84-7111-417e-80df-13529677b1b8",
+      "name": "Set · Lead Not Found"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id_canal": "+5219996167830",
+          "channel": "whatsapp",
+          "sender_name": "A. S.",
+          "conversation_id": "1"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis · Get Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Get Financieras Cache": {
+      "main": [
+        [
+          {
+            "node": "If · Financieras Cache Hit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Financieras Cache Hit?": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Cached Financieras",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Financieras Activas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Cached Financieras": {
+      "main": [
+        [
+          {
+            "node": "Code · Merge Lead & Financieras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Financieras Activas": {
+      "main": [
+        [
+          {
+            "node": "Code · Format Financieras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Format Financieras": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Financieras Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Save Financieras Cache": {
+      "main": [
+        [
+          {
+            "node": "Code · Merge Lead & Financieras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Get Lead Cache1": {
+      "main": [
+        [
+          {
+            "node": "If · Cache Hit?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Cache Hit?1": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Cached Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Search Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Cached Lead1": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Search Lead1": {
+      "main": [
+        [
+          {
+            "node": "If · Lead Exists?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Lead Exists?1": {
+      "main": [
+        [
+          {
+            "node": "Set · Lead Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Create Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Save Lead Cache1": {
+      "main": [
+        [
+          {
+            "node": "Redis · Get Financieras Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Create Lead1": {
+      "main": [
+        [
+          {
+            "node": "Set · Lead Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Lead Found": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Lead Not Found": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "fb839d7d-455c-4d85-846c-bb1870e40ed6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "XDtW6uPfubCo4kvH",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

@@ -1,0 +1,1000 @@
+{
+  "name": "🏦 SUB · Financiera Inbound (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "financiera_user_id"
+            },
+            {
+              "name": "message_text"
+            },
+            {
+              "name": "conversation_id_financiera"
+            },
+            {
+              "name": "message_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2496,
+        288
+      ],
+      "id": "2a75cb4f-3c0a-4d96-87ce-7b1615e4ef09",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Parsea el mensaje que el bot de la financiera manda a NUESTRO WhatsApp.\n// Formato de EJEMPLO (ajustar cuando llegue el real):\n//   Solicitud de crédito\n//   Nombre: Juan Pérez\n//   Teléfono: 5219991234567\n//   Estado: APROBADO\nconst t = $('When Executed by Another Workflow').first().json;\nconst raw = String(t.message_text || '');\nconst norm = raw.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\n\nfunction grab(labels){\n  for (const l of labels){\n    const re = new RegExp(l + '\\\\s*[:\\\\-]\\\\s*(.+)', 'i');\n    const m = norm.match(re);\n    if (m && m[1]) return m[1].split('\\n')[0].trim();\n  }\n  return '';\n}\n\n// Teléfono: por etiqueta o el primer bloque de 10+ dígitos del mensaje.\nlet tel = grab(['telefono','tel','celular','whatsapp','numero','num']);\nlet telDigits = tel.replace(/\\D/g,'');\nif (telDigits.length < 10){\n  const any = raw.replace(/\\D/g,' ').split(/\\s+/).filter(s=>s.length>=10).sort((a,b)=>b.length-a.length)[0] || '';\n  telDigits = any;\n}\ntelDigits = telDigits.slice(-10);\n\n// Nombre\nlet nombre = grab(['nombre','cliente','solicitante']);\n\n// Estado: aprobado / rechazado\nlet estado = null;\nconst APROB = ['aprobado','aprobada','aceptado','aceptada','autorizado','autorizada','apto','procede','preaprobado','pre-aprobado'];\nconst RECH  = ['rechazado','rechazada','denegado','denegada','no aprobado','no autorizado','no apto','no procede','declinado'];\nif (RECH.some(k => norm.includes(k))) estado = 'Rechazado';\nelse if (APROB.some(k => norm.includes(k))) estado = 'Aprobado';\n\n// Si el código no sacó estado O no sacó teléfono válido -> pedir ayuda al LLM.\nconst needs_llm = !(estado && telDigits.length === 10);\n\nreturn [{ json: {\n  msg_raw: raw,\n  parse_nombre: nombre || '',\n  parse_telefono: telDigits,\n  parse_estado: estado,\n  needs_llm,\n  via: needs_llm ? 'pendiente_llm' : 'codigo'\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2272,
+        288
+      ],
+      "id": "3bb0f875-e253-4986-9d2f-b66a2939979d",
+      "name": "Code · Parse Financiera"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "needllm",
+              "leftValue": "={{ $json.needs_llm }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2048,
+        288
+      ],
+      "id": "74227fac-732a-47ba-8c7b-44373907b543",
+      "name": "If · ¿Necesita LLM?"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1808,
+        384
+      ],
+      "id": "27a15166-5d4a-451a-9ca5-e6bf9cf50538",
+      "name": "OpenAI · Financiera Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "f0DVpwXvrUJXlheM",
+          "name": "Open AI Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"estado\": { \"type\": \"string\", \"enum\": [\"aprobado\",\"rechazado\",\"desconocido\"] },\n    \"nombre\": { \"type\": [\"string\",\"null\"] },\n    \"telefono\": { \"type\": [\"string\",\"null\"] }\n  },\n  \"required\": [\"estado\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -1680,
+        384
+      ],
+      "id": "cb6279b5-9a8b-454c-9df7-4ad8dc46277f",
+      "name": "Parser · Financiera"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Mensaje recibido de la financiera:\n\"\"\"\n{{ $('Code · Parse Financiera').first().json.msg_raw }}\n\"\"\"",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Eres un extractor de datos. Recibes un mensaje que el bot de una financiera envía a una agencia de motos para informar el resultado de una solicitud de crédito de un cliente.\nExtrae SOLO lo que el mensaje diga, en el JSON pedido:\n- estado: 'aprobado' si el crédito fue aprobado/aceptado/autorizado/apto; 'rechazado' si fue rechazado/denegado/no apto/no procede; 'desconocido' si el mensaje no lo dice con claridad.\n- nombre: el nombre del solicitante, si aparece. Si no, null.\n- telefono: el teléfono del solicitante, solo dígitos, si aparece. Si no, null.\nNo inventes datos. Si el mensaje no es sobre un resultado de crédito, estado='desconocido' y los demás null."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -1824,
+        160
+      ],
+      "id": "e564bfd2-9199-43cf-a5dd-51dc21b66f5f",
+      "name": "LLM · Parse Financiera",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst c = $('Code · Parse Financiera').first().json;\nlet nombre = c.parse_nombre || '';\nlet telefono = c.parse_telefono || '';\nlet estado = c.parse_estado || null;\nlet via = c.via;\n\nlet llm = null;\ntry { const o = $('LLM · Parse Financiera').first().json; llm = o.output || o; } catch(e) {}\n\nif (llm && (llm.estado || llm.telefono || llm.nombre)) {\n  if (!estado && llm.estado && llm.estado !== 'desconocido') {\n    estado = (llm.estado === 'aprobado') ? 'Aprobado' : (llm.estado === 'rechazado' ? 'Rechazado' : null);\n  }\n  if (telefono.length !== 10 && llm.telefono) telefono = String(llm.telefono).replace(/\\D/g,'').slice(-10);\n  if (!nombre && llm.nombre) nombre = String(llm.nombre);\n  via = 'llm';\n}\n\nconst parse_ok = !!(estado && (telefono.length === 10 || nombre));\n\nreturn [{ json: {\n  msg_raw: c.msg_raw, nombre, telefono, estado, parse_ok, via\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1472,
+        288
+      ],
+      "id": "b03389b9-7f81-4e4d-a0d3-8801338d629a",
+      "name": "Code · Reconciliar Parse"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={financiera_estado} = \"Enviado a financiera\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1248,
+        288
+      ],
+      "id": "6edc0799-4e06-49d9-8708-539bf83f7a3f",
+      "name": "Airtable · Get Leads Enviados",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nfunction d10(s){ return String(s||'').replace(/\\D/g,'').slice(-10); }\nfunction norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim(); }\n\nconst p = $('Code · Reconciliar Parse').first().json;\nlet rows = [];\ntry { rows = $('Airtable · Get Leads Enviados').all().map(i=>i.json).filter(r => r && r.id); } catch(e) {}\n\nlet lead = null, match_via = 'ninguno';\n\n// Nivel 1: teléfono (últimos 10 dígitos) contra los leads que están \"Enviado a financiera\".\nif (p.telefono && p.telefono.length === 10) {\n  lead = rows.find(r => d10(F(r).user_id_canal) === p.telefono || d10(F(r).telefono) === p.telefono) || null;\n  if (lead) match_via = 'telefono';\n}\n\n// Nivel 2: nombre exacto (normalizado) — solo si es inequívoco (un único candidato).\nif (!lead && p.nombre) {\n  const n = norm(p.nombre);\n  const cands = rows.filter(r => norm(F(r).nombre) === n);\n  if (cands.length === 1) { lead = cands[0]; match_via = 'nombre'; }\n}\n\n// Nivel 3: sin match -> se reporta a Slack para empate manual (caso \"lo llenó un familiar\").\nconst hay_match = !!lead;\nconst f = hay_match ? F(lead) : {};\n\nreturn [{ json: {\n  hay_match, match_via,\n  lead_rec_id: hay_match ? lead.id : null,\n  user_id_canal: f.user_id_canal || null,\n  lead_nombre: f.nombre || null,\n  conversation_id: f.conversation_id || null,\n  sucursal_rec: (Array.isArray(f.sucursal_interes) && f.sucursal_interes[0]) || null,\n  asesor_rec: (Array.isArray(f.asesor_asignado) && f.asesor_asignado[0]) || null,\n  modelo_interes: f.modelo_interes || '',\n  estado: p.estado, parse_nombre: p.nombre, parse_telefono: p.telefono,\n  via_parse: p.via, msg_raw: p.msg_raw,\n  candidatos_revisados: rows.length\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        288
+      ],
+      "id": "c4af9197-1cc0-4b58-a2ae-3dbcd32f2321",
+      "name": "Code · Match Lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hasmatch",
+              "leftValue": "={{ $json.hay_match }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        288
+      ],
+      "id": "0f0cac5b-6146-4328-8d7d-650c42ba92ce",
+      "name": "If · ¿Match?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPS06BWN9",
+          "mode": "id"
+        },
+        "text": "=:warning: *Respuesta de financiera SIN empatar*\nNo pude identificar a qué lead corresponde. Empátenlo a mano en Airtable.\n\n• Nombre reportado: *{{ $('Code · Match Lead').first().json.parse_nombre || '—' }}*\n• Teléfono reportado: *{{ $('Code · Match Lead').first().json.parse_telefono || '—' }}*\n• Resultado: *{{ $('Code · Match Lead').first().json.estado || 'no identificado' }}*\n• Leads revisados (en financiera): {{ $('Code · Match Lead').first().json.candidatos_revisados }}\n\n_Mensaje original:_\n```{{ $('Code · Match Lead').first().json.msg_raw }}```\n\n_Suele pasar cuando la solicitud la llenó un familiar con otro nombre/teléfono._",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -576,
+        384
+      ],
+      "id": "02e03799-ed2f-4a45-b0e4-a465e44575cd",
+      "name": "Slack · Match Manual",
+      "webhookId": "fin-slack-man-0001-financierainbnd",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Code · Match Lead').first().json.lead_rec_id }}",
+            "financiera_estado": "={{ $('Code · Match Lead').first().json.estado }}",
+            "financiera_respuesta_at": "={{ $now.toISO() }}",
+            "etapa_pipeline": "={{ $('Code · Match Lead').first().json.estado === 'Aprobado' ? 'Aprobado por financiera' : 'Rechazado por financiera' }}",
+            "ultima_interaccion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "financiera_estado",
+              "displayName": "financiera_estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Sin enviar",
+                  "value": "Sin enviar"
+                },
+                {
+                  "name": "Enviado a financiera",
+                  "value": "Enviado a financiera"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ]
+            },
+            {
+              "id": "financiera_respuesta_at",
+              "displayName": "financiera_respuesta_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "dateTime"
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "En financiera",
+                  "value": "En financiera"
+                },
+                {
+                  "name": "Aprobado por financiera",
+                  "value": "Aprobado por financiera"
+                },
+                {
+                  "name": "Rechazado por financiera",
+                  "value": "Rechazado por financiera"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ]
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "dateTime"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -576,
+        192
+      ],
+      "id": "bab01121-9877-4c19-ad9b-4628c57d8bbe",
+      "name": "Airtable · Update Lead Financiera",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code · Match Lead').first().json.estado }}",
+                    "rightValue": "Aprobado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "aprobado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code · Match Lead').first().json.estado }}",
+                    "rightValue": "Rechazado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rechazado"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -128,
+        192
+      ],
+      "id": "70182ac1-b9e1-4c30-ba2a-5855801e6ede",
+      "name": "Switch · Resultado"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('Code · Match Lead').first().json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: '¡Buenas noticias' + ($('Code · Match Lead').first().json.lead_nombre ? ', ' + $('Code · Match Lead').first().json.lead_nombre : '') + '! 🎉 Tu solicitud de crédito fue *aprobada*. En un momento un asesor de Rivas Motors se pone en contacto contigo para darte los detalles y ver los siguientes pasos.', message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96,
+        96
+      ],
+      "id": "6c575ac5-8c0a-44a9-b7e0-935b6ea6affd",
+      "name": "HTTP · Msg Aprobado al Lead",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl92B5KJskwxUM1b"
+        },
+        "filterByFormula": "=RECORD_ID() = \"{{ $('Code · Match Lead').first().json.sucursal_rec }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        96
+      ],
+      "id": "0f54ad35-70c9-4f4d-9552-ebb532182625",
+      "name": "Airtable · Get Sucursal Lead",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "3gX1041ty7VwHtWV",
+          "mode": "list",
+          "cachedResultName": "👨🏻‍💻 SUB · Human Handoff (Rivas Motors- Bajaja Sureste)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Match Lead').first().json.user_id_canal }}",
+            "conversation_id": "={{ $('Code · Match Lead').first().json.conversation_id }}",
+            "sucursal_id": "={{ (function(){ try { const s=$('Airtable · Get Sucursal Lead').first().json; const f=(s&&s.fields)?s.fields:s; return (f&&f.sucursal_id)||''; } catch(e){ return ''; } })() }}",
+            "reason": "=Crédito APROBADO por la financiera. Lead ya perfilado, interesado en {{ $('Code · Match Lead').first().json.modelo_interes || 'una moto' }}. Ya se le avisó por WhatsApp que un asesor lo contacta para cerrar. Siguiente paso: contactarlo y cerrar la operación.",
+            "priority": "alta"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "sucursal_id",
+              "displayName": "sucursal_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        96
+      ],
+      "id": "8eecef55-c242-4547-8327-fa033a1e2d8a",
+      "name": "Execute · Human Handoff (aprobado)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('Code · Match Lead').first().json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ($('Code · Match Lead').first().json.lead_nombre ? $('Code · Match Lead').first().json.lead_nombre + ', t' : 'T') + 'e cuento: por esta vez la financiera no pudo aprobar la solicitud. Pero no te cierres la puerta, hay opciones. 🙌\\n\\nMuchos lo resuelven metiendo la solicitud a nombre de un familiar (esposa, papá, hermano) que tenga buen historial; la moto igual es para ti. Y si prefieres, te conecto con un asesor para que revise tu caso y te diga qué te conviene más. ¿Cómo le hacemos?', message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96,
+        288
+      ],
+      "id": "2b035ea0-4376-46bd-a781-ced111689de8",
+      "name": "HTTP · Msg Rechazado al Lead",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPS06BWN9",
+          "mode": "id"
+        },
+        "text": "=:no_entry_sign: *Crédito RECHAZADO* — {{ $('Code · Match Lead').first().json.lead_nombre || $('Code · Match Lead').first().json.user_id_canal }}\nLa financiera no aprobó la solicitud. Ya se le avisó al cliente con tacto y se le ofreció (a) intentar con un familiar o (b) hablar con un asesor.\n\n• Lead: {{ $('Code · Match Lead').first().json.user_id_canal }}\n• Modelo de interés: {{ $('Code · Match Lead').first().json.modelo_interes || '—' }}\n\n_El bot sigue activo con este lead. Si pide asesor, el agente lo canaliza._",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        320,
+        288
+      ],
+      "id": "aee8018c-9d44-44eb-8adf-e6aae141ac55",
+      "name": "Slack · Aviso Rechazo",
+      "webhookId": "fin-slack-rech-001-financierainbn",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Match Lead').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        192
+      ],
+      "id": "1ae275d6-77ff-4b82-a3bd-e89bee2fe159",
+      "name": "Redis · Invalidate Lead Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Financiera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Financiera": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Necesita LLM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Necesita LLM?": {
+      "main": [
+        [
+          {
+            "node": "LLM · Parse Financiera",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code · Reconciliar Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM · Parse Financiera": {
+      "main": [
+        [
+          {
+            "node": "Code · Reconciliar Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · Financiera Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM · Parse Financiera",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser · Financiera": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LLM · Parse Financiera",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Reconciliar Parse": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Leads Enviados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Leads Enviados": {
+      "main": [
+        [
+          {
+            "node": "Code · Match Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Match Lead": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Match?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Update Lead Financiera",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack · Match Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Update Lead Financiera": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch · Resultado": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Msg Aprobado al Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP · Msg Rechazado al Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Msg Aprobado al Lead": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Sucursal Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursal Lead": {
+      "main": [
+        [
+          {
+            "node": "Execute · Human Handoff (aprobado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Msg Rechazado al Lead": {
+      "main": [
+        [
+          {
+            "node": "Slack · Aviso Rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache": {
+      "main": [
+        [
+          {
+            "node": "Switch · Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "237fa9a2-3cc3-434a-aa60-ad545b4cceac",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "CmqXcw91UDHy8yT7",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "name": "SYNC · Asesores → Redis (Rivas Motors)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -208
+      ],
+      "id": "2894b7ae-1bb6-41ab-93e6-d5ee457fbdb6",
+      "name": "Manual Trigger (Dev Click)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 1 * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        -16
+      ],
+      "id": "3b3f9f84-3555-4fd7-9926-eabf2bf5c6e8",
+      "name": "Cron · Día 1 a las 3 AM"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "list",
+          "cachedResultName": "Asesores",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl2rD4wXq6GhDAdo"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        -112
+      ],
+      "id": "3f24baa4-144e-4eab-a1cb-803f042ffd25",
+      "name": "Airtable · Get Asesores",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl92B5KJskwxUM1b"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        96
+      ],
+      "id": "1630bc25-fa45-4c11-ba79-66924b151a46",
+      "name": "Airtable · Get Sucursales",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════════\n// Build Cache — Agrupa asesores por sucursal, calcula primarios vs multi\n// y overflow. Formato listo para consumir por SUB · Auto-Asignar Asesor.\n// ═══════════════════════════════════════════════════════════════════════\n\nfunction F(r){ return (r && r.fields && typeof r.fields === 'object') ? r.fields : (r || {}); }\n\n// ── Traer datos crudos ──\nconst asesoresRaw = $('Airtable · Get Asesores').all().map(i => ({ id: i.json.id, ...F(i.json) }));\nconst sucursalesRaw = $('Airtable · Get Sucursales').all().map(i => ({ id: i.json.id, ...F(i.json) }));\n\n// ── Mapa sucursal_rec → info sucursal ──\nconst sucursalPorRec = {};\nconst sucursalPorCodigo = {};\nsucursalesRaw.forEach(s => {\n  const info = {\n    sucursal_rec: s.id,\n    sucursal_id: s.sucursal_id || '',\n    sucursal_nombre: s.nombre || s.sucursal_id || '',\n    sucursal_direccion: s.direccion || '',\n    sucursal_ciudad: s.ciudad || ''\n  };\n  sucursalPorRec[s.id] = info;\n  if (s.sucursal_id) sucursalPorCodigo[s.sucursal_id] = info;\n});\n\n// ── Filtrar asesores DISPONIBLES (los admin/dueños quedan fuera por default) ──\nconst asesoresDisponibles = asesoresRaw.filter(a => a.disponible === true);\n\n// ── Clasificar cada asesor: PRIMARIO (1 sucursal) vs MULTI (2+) ──\nfunction normalizarAsesor(a) {\n  const sucsLink = Array.isArray(a.sucursal) ? a.sucursal : [];\n  return {\n    asesor_rec: a.id,\n    asesor_id: a.asesor_id || '',\n    nombre: (a.nombre || '').trim() || 'Asesor',\n    email: a.email || '',\n    slack_id: (a.slack_id || '').trim(),\n    chatwoot_agent_id: (a.chatwoot_agent_id != null && a.chatwoot_agent_id !== '') ? Number(a.chatwoot_agent_id) : null,\n    porcentaje: (a.Porcentaje_leads != null && a.Porcentaje_leads !== '') ? Number(a.Porcentaje_leads) : 0,\n    max_leads: Number(a.max_leads_simultaneos) || 9999,\n    sucursales_recs: sucsLink,\n    disponible: !!a.disponible\n  };\n}\n\nconst asesoresNorm = asesoresDisponibles.map(normalizarAsesor);\n\n// ── Estructura final: por sucursal (usando codigo como key) ──\nconst porSucursal = {};\n\n// Inicializar cada sucursal con estructura base\nsucursalesRaw.forEach(s => {\n  if (!s.sucursal_id) return;\n  porSucursal[s.sucursal_id] = {\n    ...sucursalPorRec[s.id],\n    primarios: [],\n    multi_sucursal: [],\n    suma_porcentajes_primarios: 0,\n    overflow_pct: 0\n  };\n});\n\n// Distribuir asesores en cada sucursal\nasesoresNorm.forEach(a => {\n  const numSucs = a.sucursales_recs.length;\n  if (numSucs === 0) return;\n\n  const esMulti = numSucs >= 2;\n\n  a.sucursales_recs.forEach(sucRec => {\n    const sucInfo = sucursalPorRec[sucRec];\n    if (!sucInfo) return;\n    const sucKey = sucInfo.sucursal_id;\n    if (!porSucursal[sucKey]) return;\n\n    if (esMulti) {\n      porSucursal[sucKey].multi_sucursal.push({\n        ...a,\n        sucursales_totales: a.sucursales_recs.map(r => sucursalPorRec[r]?.sucursal_id).filter(Boolean)\n      });\n    } else {\n      porSucursal[sucKey].primarios.push(a);\n    }\n  });\n});\n\n// Calcular overflow por sucursal\nObject.keys(porSucursal).forEach(sucKey => {\n  const s = porSucursal[sucKey];\n  s.suma_porcentajes_primarios = s.primarios.reduce((sum, a) => sum + (Number(a.porcentaje) || 0), 0);\n  s.overflow_pct = Math.max(0, 100 - s.suma_porcentajes_primarios);\n});\n\n// ── Índice de asesores por rec (para lookups rápidos) ──\nconst asesoresPorRec = {};\nasesoresNorm.forEach(a => {\n  asesoresPorRec[a.asesor_rec] = a;\n});\n\n// ── Resumen para el log de Slack ──\nconst totalPrimarios = asesoresNorm.filter(a => a.sucursales_recs.length === 1).length;\nconst totalMulti = asesoresNorm.filter(a => a.sucursales_recs.length >= 2).length;\nconst totalSucursales = Object.keys(porSucursal).length;\n\nconst sucSinPrimarios = Object.entries(porSucursal)\n  .filter(([_, s]) => s.primarios.length === 0)\n  .map(([k]) => k);\n\nconst sucOverflowAlto = Object.entries(porSucursal)\n  .filter(([_, s]) => s.overflow_pct > 20)\n  .map(([k, s]) => `${k}(${s.overflow_pct}%)`);\n\nconst cache = {\n  actualizado_en: new Date().toISOString(),\n  total_asesores_disponibles: asesoresNorm.length,\n  total_asesores_primarios: totalPrimarios,\n  total_asesores_multi: totalMulti,\n  total_sucursales: totalSucursales,\n  por_sucursal: porSucursal,\n  asesores_por_rec: asesoresPorRec\n};\n\nreturn [{\n  json: {\n    cache,\n    resumen: {\n      total_asesores: asesoresNorm.length,\n      primarios: totalPrimarios,\n      multi_sucursal: totalMulti,\n      sucursales: totalSucursales,\n      sucursales_sin_primarios: sucSinPrimarios,\n      sucursales_overflow_alto: sucOverflowAlto,\n      actualizado_en: cache.actualizado_en\n    }\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -16
+      ],
+      "id": "1e9d0bd9-d6f9-4f85-9c21-e41a2f950ddd",
+      "name": "Code · Build Cache Structure"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "asesores:cache",
+        "value": "={{ JSON.stringify($json.cache) }}",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 3024000
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -16
+      ],
+      "id": "8c15a03c-856e-4e27-8fce-61e709fecd8d",
+      "name": "Redis · Save Cache (TTL 35 días)",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BCU5HGA9X",
+          "mode": "id"
+        },
+        "text": "=:arrows_counterclockwise: *Cache de Asesores actualizado*\n:calendar: Actualizado: {{ $('Code · Build Cache Structure').item.json.resumen.actualizado_en }}\n:bust_in_silhouette: Total asesores disponibles: *{{ $('Code · Build Cache Structure').item.json.resumen.total_asesores }}*\n • Primarios (1 sucursal): {{ $('Code · Build Cache Structure').item.json.resumen.primarios }}\n • Multi-sucursal (2+): {{ $('Code · Build Cache Structure').item.json.resumen.multi_sucursal }}\n:office: Sucursales indexadas: {{ $('Code · Build Cache Structure').item.json.resumen.sucursales }}\n{{ $('Code · Build Cache Structure').item.json.resumen.sucursales_sin_primarios.length > 0 ? '\\n:warning: *Sucursales SIN primarios (dependen 100% de multi):* ' + $('Code · Build Cache Structure').item.json.resumen.sucursales_sin_primarios.join(', ') : '' }}\n{{ $('Code · Build Cache Structure').item.json.resumen.sucursales_overflow_alto.length > 0 ? '\\n:information_source: *Sucursales con overflow >20%:* ' + $('Code · Build Cache Structure').item.json.resumen.sucursales_overflow_alto.join(', ') : '' }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        496,
+        -16
+      ],
+      "id": "2b8c760a-71c8-4b23-9956-d98f579e410e",
+      "name": "Slack · Notify Sync Done",
+      "webhookId": "82bb0402-0591-46db-a76f-8e8d31ff59fd",
+      "credentials": {
+        "slackApi": {
+          "id": "GO5PGmVih1MlpNHP",
+          "name": "Slack RM Bajaj Sureste Agente"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger (Dev Click)": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Asesores",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Airtable · Get Sucursales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron · Día 1 a las 3 AM": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Asesores",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Airtable · Get Sucursales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Asesores": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Cache Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursales": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Cache Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Build Cache Structure": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Cache (TTL 35 días)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Save Cache (TTL 35 días)": {
+      "main": [
+        [
+          {
+            "node": "Slack · Notify Sync Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4f212efc-0dff-4e64-bee8-b10e35c6f3d4",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "D2kuAgnHldRkDKwq",
+  "tags": []
+}

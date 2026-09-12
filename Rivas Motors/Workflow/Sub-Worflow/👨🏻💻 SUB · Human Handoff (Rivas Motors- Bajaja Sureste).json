@@ -1,0 +1,1644 @@
+{
+  "name": "👨🏻‍💻 SUB · Human Handoff (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"labels\": [\"asesorhumano\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8224,
+        -1120
+      ],
+      "id": "664331d1-1886-445e-9626-18f2a4817777",
+      "name": "HTTP · Chatwoot Etiqueta Humano",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": {{ JSON.stringify($('Code · Pick Asesor & Build Payload').item.json.aviso_cliente) }},\n  \"message_type\": \"outgoing\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8448,
+        -1120
+      ],
+      "id": "a563031b-3fd1-4c51-b90d-79eab7ab5927",
+      "name": "HTTP · Chatwoot Aviso Cliente1",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/assignments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"assignee_id\": {{ $('Code · Pick Asesor & Build Payload').item.json.chatwoot_agent_id }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8448,
+        -896
+      ],
+      "id": "0faa3a96-1ba0-464f-8da6-8074c3c44bc1",
+      "name": "HTTP · Chatwoot Asignar Asesor1",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "conversation_id"
+            },
+            {
+              "name": "sucursal_id"
+            },
+            {
+              "name": "reason"
+            },
+            {
+              "name": "priority"
+            },
+            {
+              "name": "paused",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -8448,
+        -1456
+      ],
+      "id": "9e4751a5-155c-40d9-86fd-c9ab72b5f981",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('When Executed by Another Workflow').item.json.user_id_canal }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -8224,
+        -1456
+      ],
+      "id": "9e28e442-3009-45a6-9414-8e8eb45d8236",
+      "name": "Airtable · Get Lead",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "list",
+          "cachedResultName": "Asesores",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl2rD4wXq6GhDAdo"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -7776,
+        -1456
+      ],
+      "id": "dbb02c26-c6a2-4949-923b-b3b14c3a62d0",
+      "name": "Airtable · Get Asesores",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "incr",
+        "key": "=rr:asesor:handoff:{{ $('When Executed by Another Workflow').item.json.sucursal_id }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -7104,
+        -1392
+      ],
+      "id": "52ca0585-2fd6-484f-93b2-9b9aea78133f",
+      "name": "Redis · RR Counter",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trig = $('When Executed by Another Workflow').item.json;\n\n// --- Lead: soporta Airtable v1 (json.fields) y v2 (campos planos en json) ---\nlet lead={}, leadId=null;\ntry { const j=$('Airtable · Get Lead').first().json; if(j&&j.id){leadId=j.id; lead = j.fields ? j.fields : j;} } catch(e){}\n\n// --- Asesores: idem ---\nlet asesores=[];\ntry { asesores=$('Airtable · Get Asesores').all().filter(a=>a.json&&a.json.id).map(a=>{const f=a.json.fields?a.json.fields:a.json; return {id:a.json.id, ...f};}); } catch(e){}\n\n// ── FIX: Redis INCR devuelve { \"rr:asesor:handoff:CAMP\": N }, no { rr_counter: N }\nlet counter=1;\ntry {\n  const rr = $('Redis · RR Counter').first().json;\n  const vals = Object.values(rr).filter(v => !isNaN(Number(v)));\n  if (vals.length) counter = Number(vals[0]) || 1;\n} catch(e){}\n\n// --- Sucursal destino (recId) ---\nlet sucRec=null; let sucNombre='';\ntry {\n  const s=$('Airtable · Get Sucursal').all().map(i=>i.json).filter(r=>r&&r.id)[0];\n  if(s){ sucRec=s.id; const f=s.fields?s.fields:s; sucNombre=f.nombre||''; }\n} catch(e){}\n\n// Guarda-espaldas: si el lead YA tiene sucursal guardada en el CRM, esa manda sobre\n// el sucursal_id que mando el LLM (en ciudades con varias sucursales se equivoca).\nconst sucLead = (lead.sucursal_interes && lead.sucursal_interes[0]) || null;\nlet sucursalOverride = false;\nif (sucLead && sucLead !== sucRec) { sucRec = sucLead; sucursalOverride = true; }\n\n// --- Pool de candidatos ---\n// OJO: el filtro por sucursal se hace en JS, NO con filterByFormula.\n// ARRAYJOIN() de un campo link devuelve el PRIMARY (ej. \"CAMP\"), no el recId,\n// y FIND(\"CAMP\", \"CAMP2\") > 0 haria match cruzado entre las dos de Campeche.\n// El API si devuelve el link como array de recIds, asi que comparamos contra eso.\n// Criterio alineado con el SUB Auto-Asignar: `disponible` debe estar EXPLÍCITAMENTE\n// en true. Un checkbox sin marcar llega como undefined; con `!== false` esos\n// asesores entraban aquí y NO en Auto-Asignar, dando repartos distintos.\nconst disp = a => a.disponible === true;\nlet pool = sucRec ? asesores.filter(a => Array.isArray(a.sucursal) && a.sucursal.includes(sucRec) && disp(a)) : [];\nlet via = pool.length ? 'sucursal' : '';\n\n// Degradacion elegante: sucursal sin asesores -> capacitacion -> cualquiera disponible.\nif(!pool.length){\n  pool = asesores.filter(a => String(a.asesor_id||'').trim().toUpperCase()==='CAP-LN');\n  if(pool.length) via='fallback_capacitacion';\n}\nif(!pool.length){\n  pool = asesores.filter(disp);\n  if(pool.length) via='fallback_cualquiera';\n}\n\n// --- Cupo: max_leads_simultaneos ---\n// Cuenta los leads con bot_paused=true (o sea, en manos de un humano) por asesor.\nconst carga={};\ntry {\n  $('Airtable · Carga Actual Asesores').all().map(i=>i.json).filter(r=>r&&r.id).forEach(r=>{\n    const f = r.fields ? r.fields : r;\n    const aa = Array.isArray(f.asesor_asignado) ? f.asesor_asignado : [];\n    aa.forEach(id => { carga[id]=(carga[id]||0)+1; });\n  });\n} catch(e){}\n\nconst conCupo = pool.filter(a=>{\n  const max = Number(a.max_leads_simultaneos);\n  if(!max || max<=0) return true;              // sin tope configurado = sin limite\n  return (carga[a.id]||0) < max;\n});\n// Si TODOS estan al tope, no dejamos el lead sin dueno: se reparte igual y se marca.\nif(conCupo.length) { pool = conCupo; }\nelse if(pool.length) { via = via + '+sobre_cupo'; }\n\n// Orden estable: sin esto el round-robin depende del orden que devuelva Airtable.\npool.sort((a,b)=>String(a.asesor_id||'').localeCompare(String(b.asesor_id||'')));\n\n// Continuidad: si el lead ya trae asesor y sigue en el pool, se respeta.\nlet asesor=null;\nconst prev=(lead.asesor_asignado&&lead.asesor_asignado[0])||null;\nif(prev) asesor=pool.find(a=>a.id===prev)||null;\nif(asesor) via = via + '+continuidad';\nif(!asesor && pool.length) asesor = pool[(counter-1)%pool.length];\n\nconst asesorNombre=(asesor&&asesor.nombre)||'un asesor disponible';\nconst slackId=(asesor&&asesor.slack_id)||'';\nconst mention = slackId && !String(slackId).startsWith('REEMPLAZA') ? `<@${slackId}>` : asesorNombre;\n\nconst nombre = lead.nombre || trig.sender_name || 'Cliente';\nconst modelo = lead.modelo_interes || 'sin definir';\nconst resumen= lead.lead_summary || 'Sin resumen aun.';\nconst ciudad = lead.ciudad || 'desconocida';\n\n// --- Perfil enriquecido (solo campos con valor) ---\nconst money = (n)=> (n!=null && n!=='' && !isNaN(Number(n))) ? '$'+Number(n).toLocaleString('en-US') : null;\nconst rows = [];\nconst push = (label,val)=>{ if(val!=null && String(val).trim()!=='' ) rows.push(`*${label}:* ${val}`); };\npush('Temperatura', lead.temperatura);\npush('Score', (lead.lead_score!=null?lead.lead_score:null));\npush('Etapa', lead.etapa_pipeline);\npush('Modelo de interés', modelo!=='sin definir'?modelo:null);\npush('Categoría', lead.categoria_interes);\npush('Uso', lead.uso_principal);\npush('Forma de pago', lead.forma_pago_preferida);\npush('Presupuesto', money(lead.presupuesto_declarado));\npush('Enganche disponible', money(lead.enganche_disponible));\npush('Última intención', lead.ultima_intencion);\npush('Objeciones', lead.objeciones_detectadas);\npush('Cómo llegó', lead.como_conocio);\npush('Teléfono', lead.telefono);\npush('Email', lead.email);\nconst perfil = rows.length ? rows.join('\\n') : '_Sin datos de perfil aún._';\n\n// Horario humano RM: L-V 9-18:30, Sab 9-14:30 (Yucatan UTC-6 fijo).\nconst now=new Date(); const mx=new Date(now.getTime()-6*3600*1000);\nconst dow=mx.getUTCDay(), hour=mx.getUTCHours();\nlet dentro=false;\nif(dow>=1&&dow<=5) dentro = hour>=9 && hour<19;\nelse if(dow===6) dentro = hour>=9 && hour<15;\nconst notaHorario = dentro ? '' : '\\n:crescent_moon: *Fuera de horario* — el cliente fue avisado de que responden al abrir.';\n\nconst chatUrl = `https://cwrivasmotors.lexnova.cloud/app/accounts/1/conversations/${trig.conversation_id||''}`;\n\nconst slack_text =\n`:fire: *Lead para atención — Rivas Motors*\n*Cliente:* ${nombre} (${trig.user_id_canal})\n*Ciudad:* ${ciudad}   *Sucursal:* ${sucNombre || trig.sucursal_id || 's/d'} (${trig.sucursal_id||'s/d'})\n*Motivo:* ${trig.reason||'no especificado'}\n*Prioridad:* ${trig.priority||'media'}\n*Asesor asignado:* ${asesorNombre}${via && via!=='sucursal' ? ' _(' + via + ')_' : ''}\n\n*— Perfil del lead —*\n${perfil}\n\n*Resumen:* ${resumen}\n:link: <${chatUrl}|Abrir chat en Chatwoot>\n:white_check_mark: _Cuando termines, *resuelve* la conversación en Chatwoot y el bot retoma._${notaHorario}\n${mention}`;\n\n// --- Texto del DM al asesor (sin la mención: ya le llega directo) ---\nconst dm_text =\n`:fire: *Te asignaron un lead que pide atención*\n*Cliente:* ${nombre}\n*WhatsApp:* <https://wa.me/${String(trig.user_id_canal||'').replace(/[^0-9]/g,'')}|${trig.user_id_canal}>\n*Sucursal:* ${sucNombre || trig.sucursal_id || 's/d'}\n*Motivo:* ${trig.reason||'no especificado'}\n*Prioridad:* ${trig.priority||'media'}\n\n*— Perfil del lead —*\n${perfil}\n\n*Resumen:* ${resumen}\n:link: <${chatUrl}|Abrir chat en Chatwoot>\n:warning: _El agente ya está pausado: la conversación es tuya. Cuando termines, *resuelve* la conversación en Chatwoot y el bot retoma._${notaHorario}`;\n\nconst aviso_cliente = dentro\n  ? `¡Gracias por tu interés! 🙌 En un momento *${asesorNombre}* se pondrá en contacto contigo para atenderte personalmente.`\n  : `¡Gracias por tu interés! 🙌 En cuanto abramos, *${asesorNombre}* se pondrá en contacto contigo para atenderte personalmente.`;\n\nreturn [{ json: {\n  ok:true, via, pool_size: pool.length, sucursal_override: sucursalOverride, carga_asesor: (asesor && carga[asesor.id]) || 0, sucursal_rec: sucRec, user_id_canal:trig.user_id_canal, lead_id:leadId,\n  asesor_id: asesor?asesor.id:null, asesor_nombre:asesorNombre,\n  chatwoot_agent_id: (asesor && asesor.chatwoot_agent_id) || null,\n  dentro_horario:dentro, slack_text, dm_text, aviso_cliente,\n  asesor_slack_id: slackId, tiene_slack: (!!slackId && !String(slackId).startsWith('REEMPLAZA'))\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6880,
+        -1456
+      ],
+      "id": "dd57e823-bd0d-430b-9ea0-edf593abcefb",
+      "name": "Code · Pick Asesor & Build Payload"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('When Executed by Another Workflow').item.json.user_id_canal }}",
+            "bot_paused": true,
+            "etapa_pipeline": "En conversación humana",
+            "ultima_interaccion": "={{ $now.toISO() }}",
+            "asesor_asignado": "={{ $('Code · Pick Asesor & Build Payload').item.json.asesor_id ? [$('Code · Pick Asesor & Build Payload').item.json.asesor_id] : [] }}",
+            "fecha_asignacion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "canal_origen",
+              "displayName": "canal_origen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "WhatsApp",
+                  "value": "WhatsApp"
+                },
+                {
+                  "name": "Facebook",
+                  "value": "Facebook"
+                },
+                {
+                  "name": "Instagram",
+                  "value": "Instagram"
+                },
+                {
+                  "name": "Referido",
+                  "value": "Referido"
+                },
+                {
+                  "name": "Página web",
+                  "value": "Página web"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "colonia",
+              "displayName": "colonia",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "score_maximo",
+              "displayName": "score_maximo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "calificado",
+              "displayName": "calificado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "modelo_interes",
+              "displayName": "modelo_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "categoria_interes",
+              "displayName": "categoria_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Utilitaria / trabajo",
+                  "value": "Utilitaria / trabajo"
+                },
+                {
+                  "name": "Scooter",
+                  "value": "Scooter"
+                },
+                {
+                  "name": "Urbana",
+                  "value": "Urbana"
+                },
+                {
+                  "name": "Doble propósito",
+                  "value": "Doble propósito"
+                },
+                {
+                  "name": "Deportiva",
+                  "value": "Deportiva"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "uso_principal",
+              "displayName": "uso_principal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Trabajo / reparto",
+                  "value": "Trabajo / reparto"
+                },
+                {
+                  "name": "Transporte personal",
+                  "value": "Transporte personal"
+                },
+                {
+                  "name": "Gusto / deportivo",
+                  "value": "Gusto / deportivo"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "enganche_disponible",
+              "displayName": "enganche_disponible",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "presupuesto_declarado",
+              "displayName": "presupuesto_declarado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "como_conocio",
+              "displayName": "como_conocio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Recomendación",
+                  "value": "Recomendación"
+                },
+                {
+                  "name": "Redes sociales",
+                  "value": "Redes sociales"
+                },
+                {
+                  "name": "Publicidad",
+                  "value": "Publicidad"
+                },
+                {
+                  "name": "Paso por sucursal",
+                  "value": "Paso por sucursal"
+                },
+                {
+                  "name": "Internet/Google",
+                  "value": "Internet/Google"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "signals_acumuladas",
+              "displayName": "signals_acumuladas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "objeciones_detectadas",
+              "displayName": "objeciones_detectadas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ultima_intencion",
+              "displayName": "ultima_intencion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "lead_summary",
+              "displayName": "lead_summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "bot_paused",
+              "displayName": "bot_paused",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_followup_at",
+              "displayName": "next_followup_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "last_followup_sent_at",
+              "displayName": "last_followup_sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "followups_count",
+              "displayName": "followups_count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "followup_respondido",
+              "displayName": "followup_respondido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "fecha_primera_interaccion",
+              "displayName": "fecha_primera_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "utm_source",
+              "displayName": "utm_source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "activo",
+              "displayName": "activo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "sucursal_interes",
+              "displayName": "sucursal_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "asesor_asignado",
+              "displayName": "asesor_asignado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Citas",
+              "displayName": "Citas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "temperatura",
+              "displayName": "temperatura",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -6464,
+        -1600
+      ],
+      "id": "a1dfa2c9-6942-4718-8a29-776d5fe94449",
+      "name": "Airtable · Update Lead (Pause)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=pause:{{ $('When Executed by Another Workflow').item.json.user_id_canal }}",
+        "value": "1",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -6256,
+        -1600
+      ],
+      "id": "957e0c14-43cb-4dec-b84c-de417891d62b",
+      "name": "Redis · Set Pause",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('When Executed by Another Workflow').item.json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -6032,
+        -1600
+      ],
+      "id": "6bca5951-39b1-4d2e-8adf-f0e555a62473",
+      "name": "Redis · Invalidate Lead Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"labels\": [\"asesorhumano\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5616,
+        -1584
+      ],
+      "id": "b8dcb4ed-c6d1-471e-a109-67eca6743cce",
+      "name": "HTTP · Chatwoot Etiqueta Humano1",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-cw",
+              "leftValue": "={{ $('Code · Pick Asesor & Build Payload').item.json.chatwoot_agent_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5344,
+        -1456
+      ],
+      "id": "c5490119-1d29-4970-9935-9953f0bcde0a",
+      "name": "If · Tiene Chatwoot ID?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/assignments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"assignee_id\": {{ $('Code · Pick Asesor & Build Payload').item.json.chatwoot_agent_id }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5120,
+        -1456
+      ],
+      "id": "f128f7ce-0307-4451-885a-8e5f6b5e3c8b",
+      "name": "HTTP · Chatwoot Asignar Asesor",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPWJHP16D",
+          "mode": "id"
+        },
+        "text": "={{ $('Code · Pick Asesor & Build Payload').item.json.slack_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -4896,
+        -1344
+      ],
+      "id": "b50ff118-2c3f-4823-9494-408ef8c8de8d",
+      "name": "Slack · Notify Rivas Grupo",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "webhookId": "a838eac8-705f-42b1-9787-a18cab3846d5",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": {{ JSON.stringify($('Code · Pick Asesor & Build Payload').item.json.aviso_cliente) }},\n  \"message_type\": \"outgoing\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5840,
+        -1600
+      ],
+      "id": "246f128a-3203-4b94-a703-661d33e91146",
+      "name": "HTTP · Chatwoot Aviso Cliente",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales"
+        },
+        "filterByFormula": "={sucursal_id} = \"{{ $('When Executed by Another Workflow').item.json.sucursal_id }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -8000,
+        -1456
+      ],
+      "id": "529144d1-fb0b-45de-b7f0-1b07bd70c7bf",
+      "name": "Airtable · Get Sucursal",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads"
+        },
+        "filterByFormula": "=AND({bot_paused} = TRUE(), {activo} = TRUE(), IS_AFTER({ultima_interaccion}, DATEADD(NOW(), -30, 'days')))",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "asesor_asignado"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -7552,
+        -1456
+      ],
+      "id": "46d80f23-0884-41d7-9304-8af001f920ac",
+      "name": "Airtable · Carga Actual Asesores",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "yat",
+              "leftValue": "={{ ($('Airtable · Get Lead').first().json.fields ? $('Airtable · Get Lead').first().json.fields.asesor_asignado : $('Airtable · Get Lead').first().json.asesor_asignado) || [] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -7328,
+        -1456
+      ],
+      "id": "0297e270-985c-409d-959e-39d9b60097ed",
+      "name": "If · ¿Ya tiene asesor?",
+      "notes": "Si el lead ya viene pre-asignado por el SUB Auto-Asignar, la continuidad manda y el contador RR no se toca: si se incrementara igual, la rotación saltaría asesores."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "slk",
+              "leftValue": "={{ $('Code · Pick Asesor & Build Payload').item.json.tiene_slack }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4896,
+        -1584
+      ],
+      "id": "bcd02515-f0ad-40b6-bc39-7e7bd5b6eac5",
+      "name": "If · ¿Asesor tiene Slack?"
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $('Code · Pick Asesor & Build Payload').item.json.asesor_slack_id }}",
+          "mode": "id"
+        },
+        "text": "={{ $('Code · Pick Asesor & Build Payload').item.json.dm_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -4672,
+        -1680
+      ],
+      "id": "b7e45540-5b5b-4a68-b932-141ccc64f15c",
+      "name": "Slack · DM Asesor Asignado",
+      "webhookId": "a838eac8-705f-42b1-9787-a18cab3846d5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -4672,
+        -1488
+      ],
+      "id": "1307c588-2a53-4e76-bcbb-663ef592e05b",
+      "name": "NoOp · Asesor Sin Slack"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "yat",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.paused }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -6704,
+        -1456
+      ],
+      "id": "cc5eec76-9d6c-4265-a0c7-effee7e961d9",
+      "name": "Se pausa?",
+      "notes": "Si el lead ya viene pre-asignado por el SUB Auto-Asignar, la continuidad manda y el contador RR no se toca: si se incrementara igual, la rotación saltaría asesores."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP · Chatwoot Aviso Cliente1": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Chatwoot Etiqueta Humano",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Lead": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Sucursal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Asesores": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Carga Actual Asesores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · RR Counter": {
+      "main": [
+        [
+          {
+            "node": "Code · Pick Asesor & Build Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Pick Asesor & Build Payload": {
+      "main": [
+        [
+          {
+            "node": "Se pausa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Update Lead (Pause)": {
+      "main": [
+        [
+          {
+            "node": "Redis · Set Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Set Pause": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Chatwoot Aviso Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Chatwoot Etiqueta Humano1": {
+      "main": [
+        [
+          {
+            "node": "If · Tiene Chatwoot ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Tiene Chatwoot ID?": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Chatwoot Asignar Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack · Notify Rivas Grupo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If · ¿Asesor tiene Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Chatwoot Asignar Asesor": {
+      "main": [
+        [
+          {
+            "node": "Slack · Notify Rivas Grupo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If · ¿Asesor tiene Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Chatwoot Aviso Cliente": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Chatwoot Etiqueta Humano1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursal": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Asesores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Carga Actual Asesores": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Ya tiene asesor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Ya tiene asesor?": {
+      "main": [
+        [
+          {
+            "node": "Code · Pick Asesor & Build Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis · RR Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Asesor tiene Slack?": {
+      "main": [
+        [
+          {
+            "node": "Slack · DM Asesor Asignado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Asesor Sin Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se pausa?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Update Lead (Pause)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If · Tiene Chatwoot ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "f2d002af-1b8c-47e0-967c-5b547413fa0d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "3gX1041ty7VwHtWV",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

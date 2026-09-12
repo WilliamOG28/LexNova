@@ -1,0 +1,629 @@
+{
+  "name": "📊📉 SUB · CRM Updater (Rivas Motors - Bjaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "campo"
+            },
+            {
+              "name": "valor"
+            },
+            {
+              "name": "sucursal_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2224,
+        3136
+      ],
+      "id": "204b9b80-b2a4-4cfc-b48d-93a56ff69392",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst campo = String(input.campo || '').trim().toLowerCase();\nconst valor = input.valor;\nconst userId = input.user_id_canal;\nconst sucursal = input.sucursal_id;\n\n// FIELD_MAP — Rivas Motors (giro motos). El bot SÍ captura enganche (parte de calificar a crédito).\nconst CAMPOS = {\n  nombre:           { col: 'nombre',                tipo: 'string' },\n  ciudad:           { col: 'ciudad',                tipo: 'string' },\n  ciudad_origen:    { col: 'ciudad',                tipo: 'string' },\n  email:            { col: 'email',                 tipo: 'string' },\n  telefono:         { col: 'telefono',              tipo: 'string' },\n  colonia:          { col: 'colonia',               tipo: 'string' },\n  presupuesto:      { col: 'presupuesto_declarado', tipo: 'number' },\n  enganche:         { col: 'enganche_disponible',   tipo: 'number' },\n  modelo_interes:   { col: 'modelo_interes',        tipo: 'string' },\n  categoria_interes:{ col: 'categoria_interes',     tipo: 'select_categoria' },\n  uso_principal:    { col: 'uso_principal',         tipo: 'select_uso' },\n  forma_pago:       { col: 'forma_pago_preferida',  tipo: 'select_pago' },\n  como_conocio:     { col: 'como_conocio',          tipo: 'select_canal' },\n  financiera_elegida:{ col: 'financiera_elegida',   tipo: 'string' },\n  objecion:         { col: 'objeciones_detectadas', tipo: 'string' },\n  lead_summary:     { col: 'lead_summary',          tipo: 'string' },\n  ultima_intencion: { col: 'ultima_intencion',      tipo: 'string' },\n  // La sucursal es link, no texto: se resuelve al recId vivo en el nodo siguiente.\n  sucursal:         { col: '__SUCURSAL__',          tipo: 'sucursal' },\n  sucursal_elegida: { col: '__SUCURSAL__',          tipo: 'sucursal' },\n};\n\n// Normalizacion de single-selects (valores reales de la base RM)\nconst MAP_CATEGORIA = {\n  'utilitaria':'Utilitaria / trabajo','trabajo':'Utilitaria / trabajo','de trabajo':'Utilitaria / trabajo','carga':'Utilitaria / trabajo',\n  'scooter':'Scooter','automatica':'Scooter','automática':'Scooter',\n  'urbana':'Urbana','ciudad':'Urbana',\n  'doble proposito':'Doble propósito','doble propósito':'Doble propósito','aventura':'Doble propósito','todo terreno':'Doble propósito',\n  'deportiva':'Deportiva','deportivo':'Deportiva','pistera':'Deportiva',\n};\nconst MAP_USO = {\n  'trabajo':'Trabajo / reparto','reparto':'Trabajo / reparto','repartidor':'Trabajo / reparto','delivery':'Trabajo / reparto','reparti':'Trabajo / reparto',\n  'personal':'Transporte personal','transporte':'Transporte personal','transportarme':'Transporte personal','moverme':'Transporte personal','ir al trabajo':'Transporte personal',\n  'gusto':'Gusto / deportivo','hobby':'Gusto / deportivo','pasear':'Gusto / deportivo','deportivo':'Gusto / deportivo',\n};\nconst MAP_PAGO = {\n  'contado':'Contado','de contado':'Contado','efectivo':'Contado','pago completo':'Contado',\n  'credito':'Crédito / financiamiento','crédito':'Crédito / financiamiento','financiamiento':'Crédito / financiamiento','financiar':'Crédito / financiamiento','a meses':'Crédito / financiamiento','mensualidades':'Crédito / financiamiento','enganche':'Crédito / financiamiento',\n};\nconst MAP_CANAL = {\n  'recomendacion':'Recomendación','recomendación':'Recomendación','referido':'Recomendación','un amigo':'Recomendación','me recomendaron':'Recomendación',\n  'redes':'Redes sociales','facebook':'Redes sociales','instagram':'Redes sociales','tiktok':'Redes sociales','fb':'Redes sociales','ig':'Redes sociales',\n  'publicidad':'Publicidad','anuncio':'Publicidad','espectacular':'Publicidad','radio':'Publicidad','lona':'Publicidad',\n  'paso por sucursal':'Paso por sucursal','pase':'Paso por sucursal','vi la tienda':'Paso por sucursal','sucursal':'Paso por sucursal',\n  'google':'Internet/Google','internet':'Internet/Google','busque':'Internet/Google','busqué':'Internet/Google','pagina web':'Internet/Google','página web':'Internet/Google',\n};\n\nconst def = CAMPOS[campo];\nif (!def) {\n  return [{ json: { ok: false, error: `Campo no permitido: ${campo}`, user_id_canal: userId } }];\n}\n\nlet valorFinal = valor;\nconst v = String(valor || '').trim().toLowerCase();\n\nif (def.tipo === 'number') {\n  let raw = String(valor || '').toLowerCase().trim();\n  const tieneMiles = /\\bmil\\b/.test(raw) || /\\d+\\s*k\\b/.test(raw);\n  let limpio = raw.replace(/[^0-9.]/g, '');\n  let n = Number(limpio);\n  if (tieneMiles && !isNaN(n) && n < 1000) { n = n * 1000; }\n  valorFinal = isNaN(n) ? null : n;\n} else if (def.tipo === 'string') {\n  valorFinal = String(valor || '').trim().slice(0, 1000);\n} else if (def.tipo === 'select_categoria') {\n  valorFinal = MAP_CATEGORIA[v] || 'Otro';\n} else if (def.tipo === 'select_uso') {\n  valorFinal = MAP_USO[v] || 'Aún no sabe';\n} else if (def.tipo === 'select_pago') {\n  valorFinal = MAP_PAGO[v] || 'Aún no sabe';\n} else if (def.tipo === 'select_canal') {\n  valorFinal = MAP_CANAL[v] || 'Otro';\n} else if (def.tipo === 'sucursal') {\n  // El valor puede venir como codigo (ITZ) o como nombre (Itzaes / Bajaj Itzaes).\n  valorFinal = String(valor || '').trim();\n}\n\nif (valorFinal === null || valorFinal === '') {\n  return [{ json: { ok: false, error: 'Valor vacio tras limpieza', user_id_canal: userId } }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    user_id_canal: userId,\n    campo_original: campo,\n    columna_airtable: def.col,\n    valor_final: valorFinal,\n    tipo: def.tipo,\n    sucursal: sucursal,\n    // clave para resolver la sucursal: el parametro sucursal_id, o el valor si campo=sucursal\n    sucursal_clave: (def.tipo === 'sucursal' ? valorFinal : '') || sucursal || '',\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        3136
+      ],
+      "id": "cd3917cf-8af4-48e0-9906-839348f82f3d",
+      "name": "Code · Validate & Map1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-check",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1776,
+        3136
+      ],
+      "id": "4cf1a812-b3e5-49ee-ac5d-1344d3029720",
+      "name": "If · Valid Field?1"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $('Code · Validate & Map1').first().json;\n\n// Escribe SOLO el campo que llega + ultima_interaccion (+ la sucursal si viene).\n// `sucursal_interes` es un LINK: hay que mandar el recId VIVO en array, nunca texto\n// ni un recId cacheado (gotcha #3). Por eso se resuelve aqui contra el catalogo.\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nfunction norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nlet sucs=[];\ntry { sucs = $('Airtable · Get Sucursales').all().map(i=>i.json).filter(r=>r&&r.id).map(r=>({id:r.id, ...F(r)})); } catch(e){}\n\nconst clave = norm(input.sucursal_clave);\nlet sucRec = null;\nif (clave) {\n  sucRec = sucs.find(s => norm(s.sucursal_id) === clave) || null;                 // 1. codigo exacto\n  if (!sucRec) sucRec = sucs.find(s => norm(s.nombre) === clave) || null;         // 2. nombre exacto\n  if (!sucRec && clave.length >= 4) {                                             // 3. nombre parcial,\n    const p = sucs.filter(s => norm(s.nombre).includes(clave));                   //    solo si es UNICO\n    if (p.length === 1) sucRec = p[0];\n  }\n}\n\nconst out = {\n  user_id_canal:      input.user_id_canal,\n  ultima_interaccion: new Date().toISOString(),\n};\nif (input.columna_airtable && input.columna_airtable !== '__SUCURSAL__') {\n  out[input.columna_airtable] = input.valor_final;\n}\nif (sucRec) out.sucursal_interes = [sucRec.id];\n\nreturn [{ json: out }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        3040
+      ],
+      "id": "908c62e9-4270-45ac-8463-4576211920db",
+      "name": "Code · Build Airtable Payload1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "colonia",
+              "displayName": "colonia",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "presupuesto_declarado",
+              "displayName": "presupuesto_declarado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "enganche_disponible",
+              "displayName": "enganche_disponible",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "modelo_interes",
+              "displayName": "modelo_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "categoria_interes",
+              "displayName": "categoria_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Utilitaria / trabajo",
+                  "value": "Utilitaria / trabajo"
+                },
+                {
+                  "name": "Scooter",
+                  "value": "Scooter"
+                },
+                {
+                  "name": "Urbana",
+                  "value": "Urbana"
+                },
+                {
+                  "name": "Doble propósito",
+                  "value": "Doble propósito"
+                },
+                {
+                  "name": "Deportiva",
+                  "value": "Deportiva"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ]
+            },
+            {
+              "id": "uso_principal",
+              "displayName": "uso_principal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Trabajo / reparto",
+                  "value": "Trabajo / reparto"
+                },
+                {
+                  "name": "Transporte personal",
+                  "value": "Transporte personal"
+                },
+                {
+                  "name": "Gusto / deportivo",
+                  "value": "Gusto / deportivo"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ]
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ]
+            },
+            {
+              "id": "como_conocio",
+              "displayName": "como_conocio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Recomendación",
+                  "value": "Recomendación"
+                },
+                {
+                  "name": "Redes sociales",
+                  "value": "Redes sociales"
+                },
+                {
+                  "name": "Publicidad",
+                  "value": "Publicidad"
+                },
+                {
+                  "name": "Paso por sucursal",
+                  "value": "Paso por sucursal"
+                },
+                {
+                  "name": "Internet/Google",
+                  "value": "Internet/Google"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ]
+            },
+            {
+              "id": "financiera_elegida",
+              "displayName": "financiera_elegida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "objeciones_detectadas",
+              "displayName": "objeciones_detectadas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_summary",
+              "displayName": "lead_summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_intencion",
+              "displayName": "ultima_intencion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal_interes",
+              "displayName": "sucursal_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1104,
+        3040
+      ],
+      "id": "040dc772-8dcc-49be-818f-011b40b48ca4",
+      "name": "Airtable · Update Lead Field1",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('When Executed by Another Workflow').item.json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        3040
+      ],
+      "id": "d4bb0b04-df30-44f6-9285-c69aa3a78bb1",
+      "name": "Redis · Invalidate Lead Cache1",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1552,
+        3232
+      ],
+      "id": "3a1d1e4b-a1cc-4eba-86fa-86b0b022ffa5",
+      "name": "NoOp · Skip Invalid1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1552,
+        3040
+      ],
+      "id": "4933fcd6-6134-462f-b63d-46b2c8e924b8",
+      "name": "Airtable · Get Sucursales",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code · Validate & Map1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Validate & Map1": {
+      "main": [
+        [
+          {
+            "node": "If · Valid Field?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Valid Field?1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Sucursales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Skip Invalid1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Build Airtable Payload1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Update Lead Field1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Update Lead Field1": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursales": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Airtable Payload1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "f1135480-634c-422e-a24a-7bc0a1292705",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "0Jg3uESV26OOvxTR",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

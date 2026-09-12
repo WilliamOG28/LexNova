@@ -1,0 +1,962 @@
+{
+  "name": "⏰ CRON · Resumen Diario (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1680,
+        1024
+      ],
+      "id": "42a8a45f-e553-4faa-8540-40b62ac9a586",
+      "name": "Cron · Diario 21h",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Una sola ventana para los dos modos. `dias` escala el rango y sirve\n// después para sacar el promedio diario del reporte semanal.\nconst modo = String($json.modo || 'diario').toLowerCase();\nconst dias = (modo === 'semanal') ? 7 : 1;\n\nconst now   = new Date();\nconst start = new Date(now.getTime() - dias * 24 * 3600 * 1000);\n\nconst fmt = (dt) => dt.toLocaleDateString('es-MX',\n  { timeZone:'America/Merida', weekday:'long', day:'numeric', month:'long' });\n\n// Rango de MAÑANA en hora MX (-06:00), para las citas del día siguiente.\nconst mx = new Date(now.getTime() - 6*3600000);\nconst t  = new Date(Date.UTC(mx.getUTCFullYear(), mx.getUTCMonth(), mx.getUTCDate()+1, 0,0,0));\nconst y = t.getUTCFullYear(), m = String(t.getUTCMonth()+1).padStart(2,'0'), dd = String(t.getUTCDate()).padStart(2,'0');\n\nreturn [{ json: {\n  modo, dias,\n  start_iso: start.toISOString(),\n  end_iso:   now.toISOString(),\n  fecha_legible: fmt(now),\n  rango_legible: (modo === 'semanal') ? `${fmt(start)} — ${fmt(now)}` : fmt(now),\n  manana_start: `${y}-${m}-${dd}T00:00:00-06:00`,\n  manana_end:   `${y}-${m}-${dd}T23:59:59-06:00`,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        1120
+      ],
+      "id": "04234fc8-20cf-41a9-84a8-b9f741197237",
+      "name": "Code · Ventana",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "=AND({fecha_primera_interaccion} != BLANK(), IS_AFTER({fecha_primera_interaccion}, \"{{ $json.start_iso }}\"), IS_BEFORE({fecha_primera_interaccion}, \"{{ $json.end_iso }}\"))",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "nombre",
+            "ciudad",
+            "etapa_pipeline",
+            "lead_score",
+            "calificado",
+            "modelo_interes",
+            "bot_paused",
+            "sucursal_interes",
+            "asesor_asignado",
+            "fecha_primera_interaccion",
+            "fecha_asignacion",
+            "last_followup_sent_at",
+            "temperatura"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1008,
+        1120
+      ],
+      "id": "1f998e83-e053-4435-9c66-70447ee98df8",
+      "name": "Airtable · Leads Nuevos 24h",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "list",
+          "cachedResultName": "Citas",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblfPtXQv8QrTrywc"
+        },
+        "filterByFormula": "=AND({creada_en} != BLANK(), IS_AFTER({creada_en}, \"{{ $('Code · Ventana').item.json.start_iso }}\"), IS_BEFORE({creada_en}, \"{{ $('Code · Ventana').item.json.end_iso }}\"))",
+        "options": {
+          "fields": [
+            "cita_id",
+            "user_id_canal",
+            "tipo_cita",
+            "fecha_hora_inicio",
+            "estado",
+            "creada_en",
+            "sucursal",
+            "asesor"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -784,
+        1120
+      ],
+      "id": "473cbbeb-4b24-4526-9a85-05e2d9a05db8",
+      "name": "Airtable · Citas 24h",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "=AND({last_followup_sent_at} != BLANK(), IS_AFTER({last_followup_sent_at}, \"{{ $('Code · Ventana').item.json.start_iso }}\"), IS_BEFORE({last_followup_sent_at}, \"{{ $('Code · Ventana').item.json.end_iso }}\"))",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "nombre",
+            "ciudad",
+            "etapa_pipeline",
+            "lead_score",
+            "calificado",
+            "modelo_interes",
+            "bot_paused",
+            "sucursal_interes",
+            "asesor_asignado",
+            "fecha_primera_interaccion",
+            "fecha_asignacion",
+            "last_followup_sent_at",
+            "temperatura"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        1120
+      ],
+      "id": "d82184e6-b060-4511-8bf8-e3aa8e1b86bd",
+      "name": "Airtable · Nurturing 24h",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={calificado}",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "nombre",
+            "ciudad",
+            "etapa_pipeline",
+            "lead_score",
+            "calificado",
+            "modelo_interes",
+            "bot_paused",
+            "sucursal_interes",
+            "asesor_asignado",
+            "fecha_primera_interaccion",
+            "fecha_asignacion",
+            "last_followup_sent_at",
+            "temperatura"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -336,
+        1120
+      ],
+      "id": "708a807c-201b-4e24-a132-2e3f078ae133",
+      "name": "Airtable · Calificados (snapshot)",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// ── Resumen Rivas Motors · diario o semanal ───────────────────────────────\nfunction F(rec){ return (rec && rec.fields && typeof rec.fields === 'object') ? rec.fields : (rec || {}); }\nfunction rows(nodeName){\n  try { return $(nodeName).all().filter(x => x.json && x.json.id).map(x => ({ id: x.json.id, ...F(x.json) })); }\n  catch(e) { return []; }\n}\nconst one = (v) => Array.isArray(v) ? (v[0] || null) : (v || null);\nconst pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;\n\nconst V = $('Code · Ventana').first().json;\nconst esSemanal = V.modo === 'semanal';\n\n// ── Catálogos ────────────────────────────────────────────────────────────\nconst sucs = rows('Airtable · Sucursales (map)');\nconst sucNombre = {}, sucCodigo = {};\nsucs.forEach(s => { sucNombre[s.id] = s.nombre || s.sucursal_id || '—'; sucCodigo[s.id] = s.sucursal_id || ''; });\n\nconst asesores = rows('Airtable · Asesores (map)');\nconst aseNombre = {}, aseSuc = {};\nasesores.forEach(a => { aseNombre[a.id] = a.nombre || a.asesor_id || '—'; aseSuc[a.id] = one(a.sucursal); });\n\n// ── Datos de la ventana ──────────────────────────────────────────────────\nconst leadsNuevos = rows('Airtable · Leads Nuevos 24h');\nconst citas       = rows('Airtable · Citas 24h');\nconst nurturing   = rows('Airtable · Nurturing 24h');\nconst asignados   = rows('Airtable · Asignados 24h');\nconst calificados = rows('Airtable · Calificados (snapshot)');\nconst hotSin      = rows('Airtable · Hot Sin Atender');\nconst citasMan    = rows('Airtable · Citas Mañana');\n\n// ── Acumulador por sucursal y por asesor ─────────────────────────────────\nconst SUC = {}, ASE = {};\nconst NUEVO = () => ({ nuevos:0, asignados:0, citas:0, hot:0, calificados:0, nurturing:0, citas_manana:0 });\nconst bumpSuc = (recId, k, n) => {\n  const key = recId || '__sin__';\n  (SUC[key] = SUC[key] || NUEVO())[k] += (n || 1);\n};\nconst bumpAse = (recId, k, n) => {\n  if (!recId) return;\n  (ASE[recId] = ASE[recId] || NUEVO())[k] += (n || 1);\n};\n\nleadsNuevos.forEach(l => { bumpSuc(one(l.sucursal_interes), 'nuevos'); bumpAse(one(l.asesor_asignado), 'nuevos'); });\nasignados.forEach(l   => { bumpSuc(one(l.sucursal_interes), 'asignados'); bumpAse(one(l.asesor_asignado), 'asignados'); });\ncitas.forEach(c       => { bumpSuc(one(c.sucursal), 'citas'); bumpAse(one(c.asesor), 'citas'); });\ncitasMan.forEach(c    => { bumpSuc(one(c.sucursal), 'citas_manana'); bumpAse(one(c.asesor), 'citas_manana'); });\nnurturing.forEach(l   => { bumpSuc(one(l.sucursal_interes), 'nurturing'); });\ncalificados.forEach(l => { bumpSuc(one(l.sucursal_interes), 'calificados'); bumpAse(one(l.asesor_asignado), 'calificados'); });\nhotSin.forEach(l      => { bumpSuc(one(l.sucursal_interes), 'hot'); bumpAse(one(l.asesor_asignado), 'hot'); });\n\n// ── Globales ─────────────────────────────────────────────────────────────\nconst gNuevos = leadsNuevos.length, gCitas = citas.length, gAsig = asignados.length;\nconst gNurt = nurturing.length, gCalif = calificados.length, gHot = hotSin.length;\nconst tasaCita = pct(gCitas, gNuevos);\nconst promDia  = (n) => esSemanal ? ` (${(n / (V.dias || 7)).toFixed(1)}/día)` : '';\n\n// Citas por estado y por tipo\nconst porEstado = {}, porTipo = {};\ncitas.forEach(c => {\n  const e = c.estado || 'Sin estado'; porEstado[e] = (porEstado[e] || 0) + 1;\n  const t = c.tipo_cita || 'Sin tipo'; porTipo[t] = (porTipo[t] || 0) + 1;\n});\nconst listaPares = (o) => Object.keys(o).sort((a,b) => o[b]-o[a]).map(k => `${k}: *${o[k]}*`).join('  ·  ') || '_ninguna_';\n\n// ── Bloque por sucursal ──────────────────────────────────────────────────\nconst filasSuc = Object.keys(SUC)\n  .map(id => ({ id, nom: id === '__sin__' ? '⚠️ Sin sucursal' : (sucNombre[id] || '—'), ...SUC[id] }))\n  .filter(s => s.nuevos || s.asignados || s.citas || s.hot || s.citas_manana)\n  .sort((a,b) => (b.nuevos + b.citas) - (a.nuevos + a.citas));\n\nconst bloqueSuc = filasSuc.length ? filasSuc.map(s => {\n  const partes = [];\n  if (s.nuevos)       partes.push(`${s.nuevos} nuevos`);\n  if (s.citas)        partes.push(`${s.citas} citas`);\n  if (s.calificados)  partes.push(`${s.calificados} calificados`);\n  if (s.hot)          partes.push(`:fire: ${s.hot} sin atender`);\n  if (s.citas_manana) partes.push(`:calendar: ${s.citas_manana} mañana`);\n  return `• *${s.nom}* — ${partes.join(' · ') || 'sin movimiento'}`;\n}).join('\\n') : '_sin movimiento en el periodo_';\n\n// ── Bloque por asesor (agrupado bajo su sucursal) ────────────────────────\nconst porSucAse = {};\nObject.keys(ASE).forEach(id => {\n  const s = aseSuc[id] || '__sin__';\n  (porSucAse[s] = porSucAse[s] || []).push({ id, nom: aseNombre[id] || '—', ...ASE[id] });\n});\nconst bloqueAse = Object.keys(porSucAse).sort((a,b) =>\n    String(sucNombre[a]||'zz').localeCompare(String(sucNombre[b]||'zz'))\n  ).map(sid => {\n    const lista = porSucAse[sid]\n      .sort((a,b) => (b.asignados + b.citas) - (a.asignados + a.citas))\n      .map(a => {\n        const p = [];\n        if (a.asignados)    p.push(`${a.asignados} asignados`);\n        if (a.citas)        p.push(`${a.citas} citas`);\n        if (a.hot)          p.push(`:fire: ${a.hot}`);\n        if (a.citas_manana) p.push(`:calendar: ${a.citas_manana} mañana`);\n        return `   • ${a.nom} — ${p.join(' · ') || 'sin actividad'}`;\n      }).join('\\n');\n    return `*${sid === '__sin__' ? '⚠️ Sin sucursal' : (sucNombre[sid] || '—')}*\\n${lista}`;\n  }).join('\\n\\n');\n\n// ── Hot sin atender: los 10 más calientes ────────────────────────────────\nconst hotTop = hotSin\n  .map(l => ({ n: l.nombre || l.user_id_canal || '—', s: Number(l.lead_score || 0),\n               suc: sucNombre[one(l.sucursal_interes)] || 's/suc' }))\n  .sort((a,b) => b.s - a.s);\nconst hotTxt = hotTop.length\n  ? hotTop.slice(0,10).map(h => `   • ${h.n} — score ${h.s} · ${h.suc}`).join('\\n')\n    + (hotTop.length > 10 ? `\\n   • …y ${hotTop.length - 10} más` : '')\n  : '_ninguno_ :tada:';\n\n// ── Mensaje 1: general + por sucursal ────────────────────────────────────\nconst titulo = esSemanal\n  ? `:calendar: *Resumen SEMANAL — Rivas Motors*\\n_${V.rango_legible}_`\n  : `:bar_chart: *Resumen diario — Rivas Motors*\\n_${V.fecha_legible}_`;\n\nconst texto =\n`${titulo}\n\n*— General —*\n• Leads nuevos: *${gNuevos}*${promDia(gNuevos)}\n• Leads asignados a asesor: *${gAsig}*\n• Citas agendadas: *${gCitas}*${promDia(gCitas)}  ·  conversión lead→cita: *${tasaCita}%*\n• Toques de nurturing: *${gNurt}*\n• Citas por estado — ${listaPares(porEstado)}\n• Citas por tipo — ${listaPares(porTipo)}\n\n*— Por sucursal —*\n${bloqueSuc}\n\n*— Hot leads sin atender (score ≥ 60): ${hotTop.length} —*\n${hotTxt}\n\n_Snapshot actual_\n• Leads calificados: *${gCalif}*  ·  Hot leads: *${gHot}*  ·  Citas mañana: *${citasMan.length}*`;\n\n// ── Mensaje 2: desglose por asesor ───────────────────────────────────────\nconst texto_asesores = bloqueAse\n  ? `${esSemanal ? ':busts_in_silhouette: *Desglose semanal por asesor*' : ':busts_in_silhouette: *Desglose por asesor*'}\\n\\n${bloqueAse}`\n  : '';\n\nreturn [{ json: {\n  modo: V.modo, texto, texto_asesores,\n  hay_detalle: !!texto_asesores,\n  leadsNuevos: gNuevos, asignados: gAsig, citas: gCitas, nurturing: gNurt,\n  calificados: gCalif, hot: gHot, tasa_cita: tasaCita,\n  sucursales_con_movimiento: filasSuc.length, asesores_con_actividad: Object.keys(ASE).length,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1120
+      ],
+      "id": "2bd900fe-ef13-4fe6-8aec-7cb48e3ebe99",
+      "name": "Code · Build Summary",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPS2RGZHT",
+          "mode": "id"
+        },
+        "text": "={{ $json.texto }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        1120
+      ],
+      "id": "7577620d-e28e-40ab-bf55-e9a7ec558c1b",
+      "name": "Slack · Post Resumen",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "webhookId": "00198324-fa2f-46c6-a669-f6c48af0b34a",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "list",
+          "cachedResultName": "Asesores",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl2rD4wXq6GhDAdo"
+        },
+        "options": {
+          "fields": [
+            "asesor_id",
+            "nombre",
+            "sucursal",
+            "disponible",
+            "slack_id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        1120
+      ],
+      "id": "c6a4d787-91fe-42b9-b216-0bbcbb2ee2ad",
+      "name": "Airtable · Asesores (map)",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "=AND({fecha_asignacion} != BLANK(), IS_AFTER({fecha_asignacion}, \"{{ $('Code · Ventana').item.json.start_iso }}\"), IS_BEFORE({fecha_asignacion}, \"{{ $('Code · Ventana').item.json.end_iso }}\"))",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "nombre",
+            "ciudad",
+            "etapa_pipeline",
+            "lead_score",
+            "calificado",
+            "modelo_interes",
+            "bot_paused",
+            "sucursal_interes",
+            "asesor_asignado",
+            "fecha_primera_interaccion",
+            "fecha_asignacion",
+            "last_followup_sent_at",
+            "temperatura"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        1120
+      ],
+      "id": "8806cd2c-ed95-476e-b561-6831fda7ec0f",
+      "name": "Airtable · Asignados 24h",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "=AND({lead_score} >= 60, NOT({bot_paused}), {etapa_pipeline} != \"En conversación humana\")",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "nombre",
+            "ciudad",
+            "etapa_pipeline",
+            "lead_score",
+            "calificado",
+            "modelo_interes",
+            "bot_paused",
+            "sucursal_interes",
+            "asesor_asignado",
+            "fecha_primera_interaccion",
+            "fecha_asignacion",
+            "last_followup_sent_at",
+            "temperatura"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        1120
+      ],
+      "id": "6c2e6466-e545-4d7b-a7ae-57961374fbde",
+      "name": "Airtable · Hot Sin Atender",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "list",
+          "cachedResultName": "Citas",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblfPtXQv8QrTrywc"
+        },
+        "filterByFormula": "=AND({fecha_hora_inicio} != BLANK(), IS_AFTER({fecha_hora_inicio}, \"{{ $('Code · Ventana').item.json.manana_start }}\"), IS_BEFORE({fecha_hora_inicio}, \"{{ $('Code · Ventana').item.json.manana_end }}\"), OR({estado}=\"Solicitada\", {estado}=\"Confirmada\"))",
+        "options": {
+          "fields": [
+            "cita_id",
+            "user_id_canal",
+            "tipo_cita",
+            "fecha_hora_inicio",
+            "estado",
+            "creada_en",
+            "sucursal",
+            "asesor"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        1120
+      ],
+      "id": "20b97745-9fb8-43e3-82f5-b4ddea8dcc2d",
+      "name": "Airtable · Citas Mañana",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1680,
+        1216
+      ],
+      "id": "004aa851-48b5-4288-b89e-81c966e0dde9",
+      "name": "Cron · Semanal Lunes 9h",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "modo-diario",
+              "name": "modo",
+              "value": "diario",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1456,
+        1024
+      ],
+      "id": "78294e31-b7d9-4f22-9dbb-c9f815c26160",
+      "name": "Set · Modo Diario",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "modo-semanal",
+              "name": "modo",
+              "value": "semanal",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1456,
+        1216
+      ],
+      "id": "45298b60-1caf-4799-9780-28e990070cfc",
+      "name": "Set · Modo Semanal",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {
+          "fields": [
+            "sucursal_id",
+            "nombre",
+            "ciudad"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        1120
+      ],
+      "id": "f5772877-e6d4-4010-bf86-586cc8ab3523",
+      "name": "Airtable · Sucursales (map)",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "det",
+              "leftValue": "={{ $('Code · Build Summary').first().json.hay_detalle }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        1120
+      ],
+      "id": "327b8adc-1d01-4670-ac64-deca889b0eaf",
+      "name": "If · ¿Hay detalle por asesor?",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPS2RGZHT",
+          "mode": "id"
+        },
+        "text": "={{ $('Code · Build Summary').first().json.texto_asesores }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1680,
+        1024
+      ],
+      "id": "1b882d9d-9a88-46b8-9fd5-584c49bfeac7",
+      "name": "Slack · Post Detalle Asesores",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "webhookId": "0c23e570-da1a-4ec9-ab66-7bd4cef9c521",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        1216
+      ],
+      "id": "68bd9aa1-340b-42f8-abe3-9cab0269c3d5",
+      "name": "NoOp · Sin Detalle",
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron · Diario 21h": {
+      "main": [
+        [
+          {
+            "node": "Set · Modo Diario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Leads Nuevos 24h": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Citas 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Citas 24h": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Nurturing 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Nurturing 24h": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Calificados (snapshot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Calificados (snapshot)": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Asesores (map)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Slack · Post Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Asesores (map)": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Asignados 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Asignados 24h": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Hot Sin Atender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Hot Sin Atender": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Citas Mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Citas Mañana": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Sucursales (map)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron · Semanal Lunes 9h": {
+      "main": [
+        [
+          {
+            "node": "Set · Modo Semanal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Modo Diario": {
+      "main": [
+        [
+          {
+            "node": "Code · Ventana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Modo Semanal": {
+      "main": [
+        [
+          {
+            "node": "Code · Ventana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Sucursales (map)": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack · Post Resumen": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Hay detalle por asesor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Hay detalle por asesor?": {
+      "main": [
+        [
+          {
+            "node": "Slack · Post Detalle Asesores",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Sin Detalle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Ventana": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Leads Nuevos 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "3456997c-c0e5-4cdc-97e2-ffc4040af108",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "tCDelpdowE8x6p7v",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

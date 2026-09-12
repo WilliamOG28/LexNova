@@ -1,0 +1,562 @@
+{
+  "name": "SUB · Sync Monday to Airtable Inventario (Rivas Motors - Bajaj Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "last_sync",
+        "key": "sync:monday:last",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        192
+      ],
+      "id": "b0e64866-8b54-4490-8265-60a3675c74ff",
+      "name": "Redis - Get Last Sync",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide si saltarse el sync (cache de 2 minutos para evitar spam)\nconst input = $('When Executed by Another Workflow').first().json;\nconst lastSync = $input.first().json.last_sync;\nconst force = input.force_sync === true || input.force_sync === 'true';\n\nconst CACHE_MINUTES = 2;\nconst now = Date.now();\nconst lastSyncMs = lastSync ? parseInt(lastSync) : 0;\nconst minutesSince = (now - lastSyncMs) / 60000;\n\nconst shouldSync = force || !lastSync || minutesSince >= CACHE_MINUTES;\n\nreturn [{\n  json: {\n    should_sync: shouldSync,\n    last_sync_at: lastSync ? new Date(lastSyncMs).toISOString() : null,\n    minutes_since_last: Math.round(minutesSince * 10) / 10,\n    cache_minutes: CACHE_MINUTES,\n    forced: force\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        192
+      ],
+      "id": "680e3eb9-0a32-4d55-9055-649f380efa03",
+      "name": "Code - Should Sync?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-should-sync",
+              "leftValue": "={{ $json.should_sync }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        192
+      ],
+      "id": "30fe10e2-1054-4989-8d41-f400f2ca63b3",
+      "name": "If - Should Sync?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        368
+      ],
+      "id": "5d5b497d-d323-4653-a71c-57e7241f4525",
+      "name": "NoOp - Skip (Cached)"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "getAll",
+        "boardId": "8890701888",
+        "groupId": "group_mm4pdmrz",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "c2937496-8d6d-454a-a4bf-6d66c201a1fd",
+      "name": "Monday - Get All Inventory",
+      "credentials": {
+        "mondayComApi": {
+          "id": "n1GoNdfxmevxGxMS",
+          "name": "MONDAY-BAJAJ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza items de Monday a registros planos para Airtable\nconst items = $input.all();\n\nconst SUCURSAL_MAP = {\n  'BAJAJ MERIDA ORIENTE ESPERANZA': 'MER-OE',\n  'BAJAJ MERIDA CAMPESTRE': 'MER-CAM',\n  'BAJAJ CHETUMAL': 'CHE',\n  'BAJAJ IZAMAL': 'IZA',\n  'BAJAJ MOTUL': 'MOT',\n  'BAJAJ TICUL': 'TIC',\n  'BAJAJ CHAMPOTON': 'CHAM',\n  'BAJAJ CAMPECHE II': 'CAMP2',\n  'BAJAJ ITZAES': 'ITZ',\n  'BAJAJ UMAN': 'UMA',\n  'BAJAJ CAMPECHE': 'CAMP',\n  'BAJAJ PISTE': 'PIS',\n  'BAJAJ CIUDAD DEL CARMEN': 'CDC',\n  'BAJAJ KANASIN': 'KAN'\n};\n\nfunction detectarFamilia(nombre) {\n  if (!nombre) return 'OTRO';\n  const n = nombre.toUpperCase();\n  if (n.includes('AVENGER')) return 'AVENGER';\n  if (n.includes('PULSAR')) return 'PULSAR';\n  if (n.includes('BOXER')) return 'BOXER';\n  if (n.includes('DOMINAR')) return 'DOMINAR';\n  if (n.includes('PLATINA')) return 'PLATINA';\n  return 'OTRO';\n}\n\nfunction detectarCilindrada(nombre, codigo) {\n  if (!nombre) return null;\n  const m1 = nombre.match(/\\b(\\d{2,3})\\b/);\n  if (m1) return parseInt(m1[1], 10);\n  if (codigo) {\n    const m2 = codigo.match(/\\d{3}/);\n    if (m2) return parseInt(m2[0], 10);\n  }\n  return null;\n}\n\nfunction diasDesde(fechaStr) {\n  if (!fechaStr) return null;\n  const d = new Date(fechaStr);\n  if (isNaN(d.getTime())) return null;\n  const hoy = new Date();\n  const diff = (hoy - d) / (1000 * 60 * 60 * 24);\n  return Math.floor(diff);\n}\n\nfunction estadoAntiguedad(dias) {\n  if (dias === null || dias === undefined) return 'Normal';\n  if (dias > 180) return 'Crítico';\n  if (dias > 120) return 'Atención';\n  return 'Normal';\n}\n\nfunction getCol(item, columnTitle) {\n  const cols = item.column_values || [];\n  const col = cols.find(c => c.column && c.column.title === columnTitle);\n  if (!col) return null;\n  return col.text || null;\n}\n\nconst out = [];\nconst nowIso = new Date().toISOString();\n\nfor (const wrapper of items) {\n  const item = wrapper.json;\n  if (!item || !item.id) continue;\n  if (item.state && item.state !== 'active') continue;\n\n  const sucursalNombre = getCol(item, 'Sucursal') || '';\n  const sucursalId = SUCURSAL_MAP[sucursalNombre.toUpperCase()] || 'OTRO';\n  const codigoModelo = getCol(item, 'Codigo de Modelo') || '';\n  const nombreModelo = getCol(item, 'Nombre del Modelo') || '';\n  const fechaIngreso = getCol(item, 'Ingreso') || null;\n  const fechaFab = getCol(item, 'Fecha de fabricación') || null;\n  const cantidadStr = getCol(item, 'ctnd') || '1';\n  const vin = getCol(item, 'No. de serie / VIN') || '';\n  const motor = getCol(item, 'Número de motor') || '';\n  const color = getCol(item, 'Color') || '';\n\n  const dias = diasDesde(fechaIngreso);\n\n  out.push({\n    json: {\n      monday_id: String(item.id),\n      vin_principal: vin,\n      numero_motor: motor,\n      codigo_modelo: codigoModelo,\n      nombre_modelo: nombreModelo,\n      familia_modelo: detectarFamilia(nombreModelo),\n      cilindrada: detectarCilindrada(nombreModelo, codigoModelo),\n      color: color,\n      sucursal_nombre: sucursalNombre,\n      sucursal_id: sucursalId,\n      fecha_ingreso: fechaIngreso,\n      fecha_fabricacion: fechaFab,\n      dias_en_inventario: dias,\n      estado_antiguedad: estadoAntiguedad(dias),\n      cantidad: parseInt(cantidadStr, 10) || 1,\n      ultima_sincronizacion: nowIso\n    }\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ],
+      "id": "c97e87f3-9cd9-4d00-9e47-a8a20e11e6f2",
+      "name": "Code - Normalize Monday Items"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblw7fgsL3fAWjW5h",
+          "mode": "list",
+          "cachedResultName": "Inventario",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblw7fgsL3fAWjW5h"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "color": "={{ $json.color }}",
+            "cilindrada": "={{ $json.cilindrada }}",
+            "dias_en_inventario": "={{ $json.dias_en_inventario }}",
+            "cantidad": "={{ $json.cantidad }}",
+            "monday_id": "={{ $json.monday_id }}",
+            "vin_principal": "={{ $json.vin_principal }}",
+            "numero_motor": "={{ $json.numero_motor }}",
+            "codigo_modelo": "={{ $json.codigo_modelo }}",
+            "nombre_modelo": "={{ $json.nombre_modelo }}",
+            "familia_modelo": "={{ $json.familia_modelo }}",
+            "sucursal_nombre": "={{ $json.sucursal_nombre }}",
+            "sucursal_id": "={{ $json.sucursal_id }}",
+            "fecha_ingreso": "={{ $json.fecha_ingreso }}",
+            "fecha_fabricacion": "={{ $json.fecha_fabricacion }}",
+            "estado_antiguedad": "={{ $json.estado_antiguedad }}",
+            "ultima_sincronizacion": "={{ $json.ultima_sincronizacion }}"
+          },
+          "matchingColumns": [
+            "monday_id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "monday_id",
+              "displayName": "monday_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "vin_principal",
+              "displayName": "vin_principal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "numero_motor",
+              "displayName": "numero_motor",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "codigo_modelo",
+              "displayName": "codigo_modelo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre_modelo",
+              "displayName": "nombre_modelo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "familia_modelo",
+              "displayName": "familia_modelo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "cilindrada",
+              "displayName": "cilindrada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "color",
+              "displayName": "color",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal_nombre",
+              "displayName": "sucursal_nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal_id",
+              "displayName": "sucursal_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_ingreso",
+              "displayName": "fecha_ingreso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_fabricacion",
+              "displayName": "fecha_fabricacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "dias_en_inventario",
+              "displayName": "dias_en_inventario",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_antiguedad",
+              "displayName": "estado_antiguedad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Normal",
+                  "value": "Normal"
+                },
+                {
+                  "name": "Atención",
+                  "value": "Atención"
+                },
+                {
+                  "name": "Crítico",
+                  "value": "Crítico"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_sincronizacion",
+              "displayName": "ultima_sincronizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "29515e33-8ade-4de6-a655-3d744bb8adb1",
+      "name": "Airtable - Upsert Inventory",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "sync:monday:last",
+        "value": "={{ Date.now() }}",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "85bdb82d-5704-4624-a4c2-6ff1c1789b11",
+      "name": "Redis - Mark Sync Done",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resumen del sync para el llamador\nconst items = $('Code - Normalize Monday Items').all();\nreturn [{\n  json: {\n    sync_executed: true,\n    total_items: items.length,\n    synced_at: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "56b3d96d-760d-4f40-9251-0e5556d4361c",
+      "name": "Code - Sync Summary"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -928,
+        192
+      ],
+      "id": "ffb87c8c-010b-4602-8bf4-911dcb12e696",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Redis - Get Last Sync": {
+      "main": [
+        [
+          {
+            "node": "Code - Should Sync?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Should Sync?": {
+      "main": [
+        [
+          {
+            "node": "If - Should Sync?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Should Sync?": {
+      "main": [
+        [
+          {
+            "node": "Monday - Get All Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp - Skip (Cached)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monday - Get All Inventory": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize Monday Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize Monday Items": {
+      "main": [
+        [
+          {
+            "node": "Airtable - Upsert Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable - Upsert Inventory": {
+      "main": [
+        [
+          {
+            "node": "Redis - Mark Sync Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis - Mark Sync Done": {
+      "main": [
+        [
+          {
+            "node": "Code - Sync Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Redis - Get Last Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "53686b8e-dea4-4b6c-8137-6d9d2424c7a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "pe3buoiddO25QNqo",
+  "tags": []
+}

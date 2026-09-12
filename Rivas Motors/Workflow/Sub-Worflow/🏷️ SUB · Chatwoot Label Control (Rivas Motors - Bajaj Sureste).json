@@ -1,0 +1,1296 @@
+{
+  "name": "🏷️ SUB · Chatwoot Label Control (Rivas Motors - Bajaj Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rivasmotors-chatwoot-label",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        352
+      ],
+      "id": "fd12337d-071d-423c-9cc2-c55404bbb0e3",
+      "name": "Webhook · Chatwoot Label",
+      "webhookId": "c1a2b3d4-label-rm00-0001-cwlabelcontrol"
+    },
+    {
+      "parameters": {
+        "jsCode": "function g(o,path,def=null){ if(!o) return def; return path.split('.').reduce((a,k)=>(a&&a[k]!==undefined&&a[k]!==null)?a[k]:def,o);}\nlet body=$json.body||$json;\nif(typeof body==='string'){ try{ body=JSON.parse(body);}catch(e){} }\n\n// labels: array de strings, array de objetos {title}, o CSV, en varias ubicaciones\nlet labels = body.labels || g(body,'conversation.labels') || g(body,'payload.labels') || g(body,'conversation.additional_attributes.labels') || [];\nif(typeof labels==='string') labels = labels.split(',');\nlabels = (labels||[]).map(l => (typeof l==='string' ? l : (l && (l.title||l.name) || ''))).map(s=>String(s).trim().toLowerCase()).filter(Boolean);\n\n// contact_id (en vez de conv_id)\nconst contact_id = g(body,'contact_inbox.contact_id') || g(body,'meta.sender.id') || g(body,'messages.0.sender.id') || g(body,'sender.id') || null;\n\nlet phone = g(body,'meta.sender.phone_number') || g(body,'conversation.meta.sender.phone_number') || g(body,'meta.sender.identifier') || g(body,'sender.phone_number') || '';\nlet user_id_canal = String(phone||'').replace(/^whatsapp:/i,'').trim();\n\n// Etiquetas reales: 'asesorhumano' (humano) e 'iabajaj' (bot)\nconst tiene_humano = labels.includes('asesorhumano');\nconst tiene_ia = labels.includes('iabajaj');\n\n// Regla: humano manda. asesorhumano => pausar; si no y hay iabajaj => reactivar; si no => ignorar.\nlet accion='ignorar';\nif(!user_id_canal) accion='ignorar';\nelse if(tiene_humano) accion='pausar';\nelse if(tiene_ia) accion='reactivar';\n\nreturn [{ json: { contact_id, user_id_canal, labels, tiene_humano, tiene_ia, accion } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        352
+      ],
+      "id": "4e4ce44d-35f8-4c92-a9f6-3d72736a2a31",
+      "name": "Code · Parse Label Event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-pausar",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "pausar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        352
+      ],
+      "id": "252f942a-8e8d-4927-af08-9611e7099941",
+      "name": "If · ¿Pausar?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-react",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "reactivar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        512
+      ],
+      "id": "319055ee-ecd8-4344-945c-ef6a53a0b0df",
+      "name": "If · ¿Reactivar?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        640,
+        672
+      ],
+      "id": "2a39713d-743c-4d27-b203-f758a902d258",
+      "name": "NoOp · Ignorar"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Parse Label Event').first().json.user_id_canal }}",
+            "bot_paused": true,
+            "etapa_pipeline": "En conversación humana",
+            "ultima_interaccion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "bot_paused",
+              "displayName": "bot_paused",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ]
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_followup_at",
+              "displayName": "next_followup_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        192
+      ],
+      "id": "747f525e-fd7a-4918-800c-1972b9906f03",
+      "name": "Airtable · Pausar Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=pause:{{ $('Code · Parse Label Event').first().json.user_id_canal }}",
+        "value": "1",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        640,
+        192
+      ],
+      "id": "9e1dcced-d3db-425d-a6b1-8624e48ee0c1",
+      "name": "Redis · Set Pause",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Parse Label Event').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        864,
+        192
+      ],
+      "id": "2bdb30c3-a31e-4db9-b232-3067b00f126e",
+      "name": "Redis · Invalidate Cache (pausa)",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Parse Label Event').first().json.user_id_canal }}",
+            "bot_paused": false,
+            "etapa_pipeline": "En seguimiento manual por reenganche",
+            "ultima_interaccion": "={{ $now.toISO() }}",
+            "next_followup_at": "={{ $now.plus(14, 'days').toISO() }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "canal_origen",
+              "displayName": "canal_origen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "WhatsApp",
+                  "value": "WhatsApp"
+                },
+                {
+                  "name": "Facebook",
+                  "value": "Facebook"
+                },
+                {
+                  "name": "Instagram",
+                  "value": "Instagram"
+                },
+                {
+                  "name": "Referido",
+                  "value": "Referido"
+                },
+                {
+                  "name": "Página web",
+                  "value": "Página web"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "colonia",
+              "displayName": "colonia",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                },
+                {
+                  "name": "En financiera",
+                  "value": "En financiera"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "score_maximo",
+              "displayName": "score_maximo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "calificado",
+              "displayName": "calificado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "modelo_interes",
+              "displayName": "modelo_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "categoria_interes",
+              "displayName": "categoria_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Utilitaria / trabajo",
+                  "value": "Utilitaria / trabajo"
+                },
+                {
+                  "name": "Scooter",
+                  "value": "Scooter"
+                },
+                {
+                  "name": "Urbana",
+                  "value": "Urbana"
+                },
+                {
+                  "name": "Doble propósito",
+                  "value": "Doble propósito"
+                },
+                {
+                  "name": "Deportiva",
+                  "value": "Deportiva"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "uso_principal",
+              "displayName": "uso_principal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Trabajo / reparto",
+                  "value": "Trabajo / reparto"
+                },
+                {
+                  "name": "Transporte personal",
+                  "value": "Transporte personal"
+                },
+                {
+                  "name": "Gusto / deportivo",
+                  "value": "Gusto / deportivo"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "enganche_disponible",
+              "displayName": "enganche_disponible",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "presupuesto_declarado",
+              "displayName": "presupuesto_declarado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "como_conocio",
+              "displayName": "como_conocio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Recomendación",
+                  "value": "Recomendación"
+                },
+                {
+                  "name": "Redes sociales",
+                  "value": "Redes sociales"
+                },
+                {
+                  "name": "Publicidad",
+                  "value": "Publicidad"
+                },
+                {
+                  "name": "Paso por sucursal",
+                  "value": "Paso por sucursal"
+                },
+                {
+                  "name": "Internet/Google",
+                  "value": "Internet/Google"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "signals_acumuladas",
+              "displayName": "signals_acumuladas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "objeciones_detectadas",
+              "displayName": "objeciones_detectadas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ultima_intencion",
+              "displayName": "ultima_intencion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "lead_summary",
+              "displayName": "lead_summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "bot_paused",
+              "displayName": "bot_paused",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_followup_at",
+              "displayName": "next_followup_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_followup_sent_at",
+              "displayName": "last_followup_sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "followups_count",
+              "displayName": "followups_count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "followup_respondido",
+              "displayName": "followup_respondido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "fecha_primera_interaccion",
+              "displayName": "fecha_primera_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "utm_source",
+              "displayName": "utm_source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "activo",
+              "displayName": "activo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "sucursal_interes",
+              "displayName": "sucursal_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "asesor_asignado",
+              "displayName": "asesor_asignado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Citas",
+              "displayName": "Citas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "temperatura",
+              "displayName": "temperatura",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "fecha_asignacion",
+              "displayName": "fecha_asignacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "financiera_estado",
+              "displayName": "financiera_estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Sin enviar",
+                  "value": "Sin enviar"
+                },
+                {
+                  "name": "Enviado a financiera",
+                  "value": "Enviado a financiera"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "financiera_link_enviado_at",
+              "displayName": "financiera_link_enviado_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "financiera_respuesta_at",
+              "displayName": "financiera_respuesta_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "financiera_asignada",
+              "displayName": "financiera_asignada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "financiera_elegida",
+              "displayName": "financiera_elegida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        512
+      ],
+      "id": "4c0e2f4c-cca4-48d9-a48b-023b1c8c569d",
+      "name": "Airtable · Reactivar Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=pause:{{ $('Code · Parse Label Event').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        864,
+        512
+      ],
+      "id": "104e734a-aea2-4606-8e43-55a8f40c952e",
+      "name": "Redis · Delete Pause",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Parse Label Event').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        512
+      ],
+      "id": "c3848afe-63d2-43c7-9b44-8f7e046327f0",
+      "name": "Redis · Invalidate Cache (react)",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook · Chatwoot Label": [
+      {
+        "json": {
+          "headers": {
+            "host": "estudio-cien-n8n-estudio-cien.fypjvd.easypanel.host",
+            "user-agent": "Ruby",
+            "content-length": "2950",
+            "accept": "application/json",
+            "accept-encoding": "gzip;q=1.0,deflate;q=0.6,identity;q=0.3",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.16.1.1",
+            "x-forwarded-host": "estudio-cien-n8n-estudio-cien.fypjvd.easypanel.host",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "1c36df0bf611",
+            "x-real-ip": "172.16.1.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "additional_attributes": {},
+            "can_reply": false,
+            "channel": "Channel::Whatsapp",
+            "contact_inbox": {
+              "id": 7,
+              "contact_id": 4,
+              "inbox_id": 1,
+              "source_id": "5217225183877",
+              "created_at": "2026-07-01T18:28:12.010Z",
+              "updated_at": "2026-07-01T18:28:12.010Z",
+              "hmac_verified": false,
+              "pubsub_token": "hAaf8Wsr7EBt25c854g3Agmm"
+            },
+            "id": 25,
+            "inbox_id": 1,
+            "messages": [
+              {
+                "id": 1198,
+                "content": "Si quieres, te paso con alguien de tu sucursal y te lo dejan ya aterrizado con la Dominar 250.",
+                "account_id": 1,
+                "inbox_id": 1,
+                "conversation_id": 25,
+                "message_type": 1,
+                "created_at": 1785549332,
+                "updated_at": "2026-08-01T01:55:34.637Z",
+                "private": false,
+                "status": "delivered",
+                "source_id": "wamid.HBgNNTIxNzIyNTE4Mzg3NxUCABEYEkEwNTA5NUY4N0YwMzZEQzYxQgA=",
+                "content_type": "text",
+                "content_attributes": {},
+                "sender_type": "User",
+                "sender_id": 1,
+                "external_source_ids": {},
+                "additional_attributes": {},
+                "processed_message_content": "Si quieres, te paso con alguien de tu sucursal y te lo dejan ya aterrizado con la Dominar 250.",
+                "sentiment": {},
+                "conversation": {
+                  "assignee_id": 2,
+                  "unread_count": 0,
+                  "last_activity_at": 1785722717,
+                  "contact_inbox": {
+                    "source_id": "5217225183877"
+                  }
+                },
+                "sender": {
+                  "id": 1,
+                  "name": "Agente Bajaj LN",
+                  "available_name": "IA Bajaj LN",
+                  "avatar_url": "https://cwrivasmotors.lexnova.cloud/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBYdz09IiwiZXhwIjpudWxsLCJwdXIiOiJibG9iX2lkIn19--2918065d63b6b6333c36454b34810aaf90c2a627/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaDdCem9MWm05eWJXRjBTU0lJY0c1bkJqb0dSVlE2RTNKbGMybDZaVjkwYjE5bWFXeHNXd2RwQWZvdyIsImV4cCI6bnVsbCwicHVyIjoidmFyaWF0aW9uIn19--c20999295fc6f7603aa928a984bc151d32e08d35/Logo%20Bajaj%20LN.png",
+                  "type": "user",
+                  "availability_status": null,
+                  "thumbnail": "https://cwrivasmotors.lexnova.cloud/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBYdz09IiwiZXhwIjpudWxsLCJwdXIiOiJibG9iX2lkIn19--2918065d63b6b6333c36454b34810aaf90c2a627/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaDdCem9MWm05eWJXRjBTU0lJY0c1bkJqb0dSVlE2RTNKbGMybDZaVjkwYjE5bWFXeHNXd2RwQWZvdyIsImV4cCI6bnVsbCwicHVyIjoidmFyaWF0aW9uIn19--c20999295fc6f7603aa928a984bc151d32e08d35/Logo%20Bajaj%20LN.png"
+                }
+              }
+            ],
+            "labels": [
+              "iabajaj"
+            ],
+            "meta": {
+              "sender": {
+                "additional_attributes": {},
+                "custom_attributes": {},
+                "email": null,
+                "id": 4,
+                "identifier": null,
+                "name": "Fernando Rivas",
+                "phone_number": "+5217225183877",
+                "thumbnail": "",
+                "blocked": false,
+                "type": "contact"
+              },
+              "assignee": {
+                "id": 2,
+                "name": "Fernando Rivas",
+                "available_name": "Fernando Rivas",
+                "avatar_url": "",
+                "type": "user",
+                "availability_status": null,
+                "thumbnail": ""
+              },
+              "assignee_type": "User",
+              "team": null,
+              "hmac_verified": false
+            },
+            "status": "open",
+            "custom_attributes": {},
+            "snoozed_until": null,
+            "unread_count": 0,
+            "first_reply_created_at": "2026-07-06T17:13:33.645Z",
+            "priority": null,
+            "waiting_since": 0,
+            "agent_last_seen_at": 1785721980,
+            "contact_last_seen_at": 0,
+            "last_activity_at": 1785722717,
+            "timestamp": 1785722717,
+            "created_at": 1783357990,
+            "updated_at": 1785722717.484637,
+            "account": {
+              "id": 1,
+              "name": "Rivas Motors LexNova"
+            },
+            "event": "automation_event.conversation_updated"
+          },
+          "webhookUrl": "https://estudio-cien-n8n-estudio-cien.fypjvd.easypanel.host/webhook/rivasmotors-chatwoot-label",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook · Chatwoot Label": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Label Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Label Event": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Pausar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Pausar?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Pausar Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If · ¿Reactivar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Reactivar?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Reactivar Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Ignorar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Pausar Lead": {
+      "main": [
+        [
+          {
+            "node": "Redis · Set Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Set Pause": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Cache (pausa)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Reactivar Lead": {
+      "main": [
+        [
+          {
+            "node": "Redis · Delete Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Delete Pause": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Cache (react)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ea729506-07b8-4e43-9e55-ed1ad971afc8",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "TgwJdU3ckxGq05nN",
+  "tags": []
+}

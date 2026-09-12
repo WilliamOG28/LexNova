@@ -1,0 +1,565 @@
+{
+  "name": "🔄 SUB · Chatwoot Reactivar Bot (Rivas Motors - Bajaj Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rivasmotors-chatwoot-resolve",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        1072
+      ],
+      "id": "a91b4097-2b7e-4a26-a761-2ab341ddfbb1",
+      "name": "Webhook · Chatwoot Status",
+      "webhookId": "e1d2c3b4-resolve-0001-aaaa-bbbbbbbbbbbb"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsea el evento conversation_status_changed de Chatwoot.\nfunction g(o, path, def = null) {\n  if (!o) return def;\n  return path.split('.').reduce((a, k) =>\n    (a && a[k] !== undefined && a[k] !== null) ? a[k] : def, o);\n}\n\nlet body = $json.body || $json;\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) {} }\n\nconst event  = body.event || '';\nconst status = (body.status || g(body,'conversation.status') || '').toLowerCase();\n\nconst conv_id =\n    body.id || body.display_id ||\n    g(body,'conversation.id') || g(body,'conversation.display_id') || null;\n\nconst inbox_id =\n    body.inbox_id || g(body,'conversation.inbox_id') || g(body,'contact_inbox.inbox_id') || null;\n\nconst contact_id =\n    g(body,'contact_inbox.contact_id') || g(body,'meta.sender.id') || g(body,'messages.0.sender.id') || null;\n\nlet phone =\n    g(body,'meta.sender.phone_number') ||\n    g(body,'conversation.meta.sender.phone_number') ||\n    g(body,'meta.sender.identifier') || '';\nphone = String(phone||'').replace(/^whatsapp:/i,'').trim();\n\nconst es_resolved = event === 'conversation_status_changed' && status === 'resolved';\n\nreturn [{ json: { event, status, conv_id, inbox_id, contact_id, phone, es_resolved } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1072
+      ],
+      "id": "5c1aff61-7f0c-4f5d-89f3-adc98744359f",
+      "name": "Code · Parse Status Event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-resolved",
+              "leftValue": "={{ $json.es_resolved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c-inbox",
+              "leftValue": "={{ $json.inbox_id }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        1072
+      ],
+      "id": "50c0bc76-b5b1-4001-a308-ddda76a8a43c",
+      "name": "If · Is Resolved?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        96,
+        1232
+      ],
+      "id": "22790270-1c15-4cc3-a445-6804aeaea401",
+      "name": "NoOp · Ignore (no resolve)"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('Code · Parse Status Event').first().json.phone }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        96,
+        960
+      ],
+      "id": "95e35d61-aabe-4634-857a-7e0c14d80871",
+      "name": "Airtable · Search Lead",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-found",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        960
+      ],
+      "id": "a32c9144-101e-465b-b03b-aa6564e48a40",
+      "name": "If · Lead Found?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        544,
+        1120
+      ],
+      "id": "79c39fa2-5202-4f9d-b5da-dfb82db82221",
+      "name": "NoOp · Lead No Encontrado"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide los campos de reactivacion segun la etapa actual del lead.\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nlet rec = {};\ntry { rec = $('Airtable · Search Lead').first().json; } catch(e){}\nconst f = F(rec);\nconst etapa = f.etapa_pipeline || '';\nconst userId = f.user_id_canal || $('Code · Parse Status Event').first().json.phone || '';\nconst leadId = rec.id || null;\n\nconst cerrado_o_perdido = (etapa === 'Cerrado (venta)' || etapa === 'Perdido');\n\nconst now = new Date();\nconst next = new Date(now.getTime() + 14*24*3600*1000);\n\n// Si esta cerrado/perdido: reactivamos el bot pero NO tocamos la etapa ni reprogramamos nurturing.\nconst nueva_etapa = cerrado_o_perdido ? etapa : 'En seguimiento manual por reenganche';\n\nreturn [{ json: {\n  lead_id: leadId,\n  user_id_canal: userId,\n  nueva_etapa,\n  next_followup_at: next.toISOString(),\n  reactivado: true\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        880
+      ],
+      "id": "e0893867-73f9-4f06-b0e4-741449e1f9e5",
+      "name": "Code · Decide Reactivation"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Code · Decide Reactivation').first().json.lead_id }}",
+            "bot_paused": false,
+            "etapa_pipeline": "={{ $('Code · Decide Reactivation').first().json.nueva_etapa }}",
+            "next_followup_at": "={{ $('Code · Decide Reactivation').first().json.next_followup_at }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "bot_paused",
+              "displayName": "bot_paused",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ]
+            },
+            {
+              "id": "next_followup_at",
+              "displayName": "next_followup_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        768,
+        880
+      ],
+      "id": "9e7bb672-7585-447c-8aca-50796cfdf091",
+      "name": "Airtable · Reactivar Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=pause:{{ $('Code · Decide Reactivation').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        992,
+        880
+      ],
+      "id": "f5d0b0e6-7f85-449b-a52c-7a1e352c74ca",
+      "name": "Redis · Delete Pause",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Decide Reactivation').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        880
+      ],
+      "id": "c8bff0f8-2971-4087-afb7-ec0ddc87f04b",
+      "name": "Redis · Invalidate Lead Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('Code · Parse Status Event').first().json.conv_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"labels\": [\"iabajaj\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        880
+      ],
+      "id": "cbd13357-7150-4a34-aa74-4f4878bfb756",
+      "name": "HTTP · Chatwoot Etiqueta IA",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook · Chatwoot Status": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Status Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Status Event": {
+      "main": [
+        [
+          {
+            "node": "If · Is Resolved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Is Resolved?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Search Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Ignore (no resolve)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Search Lead": {
+      "main": [
+        [
+          {
+            "node": "If · Lead Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Lead Found?": {
+      "main": [
+        [
+          {
+            "node": "Code · Decide Reactivation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Lead No Encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Decide Reactivation": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Reactivar Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Reactivar Lead": {
+      "main": [
+        [
+          {
+            "node": "Redis · Delete Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Delete Pause": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Chatwoot Etiqueta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "36ec1101-be34-4ad2-856f-9564b9414327",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "2XhNNnW98PiTQWrM",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    }
+  ]
+}

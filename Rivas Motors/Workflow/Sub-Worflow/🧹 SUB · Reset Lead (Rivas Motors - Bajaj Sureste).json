@@ -1,0 +1,1005 @@
+{
+  "name": "🧹 SUB · Reset Lead (Rivas Motors - Bajaj Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "borrar_memoria_postgres",
+              "type": "boolean"
+            },
+            {
+              "name": "resetear_lead_airtable",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        112
+      ],
+      "id": "75609770-ebca-4d13-876e-375f05630175",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// ── Normaliza el telefono y arma TODAS las llaves de Redis del lead ────────\n// Se aceptan formatos sueltos: \"9996167830\", \"+5219996167830\", \"521 999 616 7830\".\n// Como en Chatwoot el user_id_canal puede venir con o sin +52 / 521, se generan\n// las variantes y se borran todas: borrar una llave inexistente no cuesta nada.\nconst trig = $('When Executed by Another Workflow').first().json;\nconst raw  = String(trig.user_id_canal || '+529996167830').trim();\nif (!raw) throw new Error('Falta user_id_canal');\n\nconst digits = raw.replace(/\\D/g, '');\nconst d10 = digits.slice(-10);                       // 9996167830\n\nconst ids = new Set([\n  raw,\n  digits,\n  d10,\n  '+' + digits,\n  '52'  + d10,  '+52'  + d10,\n  '521' + d10,  '+521' + d10,\n]);\n\n// Prefijos por-lead que usa el sistema. NO se tocan llaves globales\n// (financieras:activas) ni contadores de round-robin por sucursal (rr:asesor:*),\n// porque son compartidos entre todos los leads.\nconst PREFIJOS = ['lead:', 'buffer:', 'pause:', 'mirror:lead:'];\n\nconst keys = [];\nfor (const id of ids) {\n  if (!id) continue;\n  for (const p of PREFIJOS) keys.push(p + id);\n}\n\nconst unicas = [...new Set(keys)];\nreturn unicas.map(k => ({ json: {\n  key: k,\n  user_id_canal: raw,\n  telefono_10: d10,\n  total_keys: unicas.length,\n} }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        112
+      ],
+      "id": "6cd26f41-d097-41ff-8f98-faf16b9b4946",
+      "name": "Code · Armar Llaves"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.key }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        112
+      ],
+      "id": "217ea395-e6a6-4f76-a894-928d3dce73ad",
+      "name": "Redis · Borrar Llave",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "executeOnce": false,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "mem",
+              "leftValue": "={{ $('When Executed by Another Workflow').first().json.borrar_memoria_postgres }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        112
+      ],
+      "id": "0da44599-3e8d-432f-bbcb-84f5275b0266",
+      "name": "If · ¿Borrar memoria?",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM n8n_chat_memory_bajajsureste WHERE session_id = $1 RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ $('When Executed by Another Workflow').first().json.user_id_canal }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "636a091a-8be7-49b7-b0ea-a6614bdb8840",
+      "name": "Postgres · Borrar Memoria Agente",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "QbWrYGfT0dYnMn9y",
+          "name": "Postgres SupaBase BAjaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "lead",
+              "leftValue": "={{ $('When Executed by Another Workflow').first().json.resetear_lead_airtable }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        112
+      ],
+      "id": "f78ccbc9-410b-4a64-b85d-b393c881ee49",
+      "name": "If · ¿Resetear lead?",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('When Executed by Another Workflow').first().json.user_id_canal }}",
+            "lead_score": 0,
+            "score_maximo": 0,
+            "bot_paused": false,
+            "followups_count": 0,
+            "followup_respondido": false,
+            "presupuesto_declarado": 0,
+            "enganche_disponible": 0,
+            "conversation_id": 0
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "canal_origen",
+              "displayName": "canal_origen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "WhatsApp",
+                  "value": "WhatsApp"
+                },
+                {
+                  "name": "Facebook",
+                  "value": "Facebook"
+                },
+                {
+                  "name": "Instagram",
+                  "value": "Instagram"
+                },
+                {
+                  "name": "Referido",
+                  "value": "Referido"
+                },
+                {
+                  "name": "Página web",
+                  "value": "Página web"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "colonia",
+              "displayName": "colonia",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                },
+                {
+                  "name": "En financiera",
+                  "value": "En financiera"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score_maximo",
+              "displayName": "score_maximo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "calificado",
+              "displayName": "calificado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "modelo_interes",
+              "displayName": "modelo_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "categoria_interes",
+              "displayName": "categoria_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Utilitaria / trabajo",
+                  "value": "Utilitaria / trabajo"
+                },
+                {
+                  "name": "Scooter",
+                  "value": "Scooter"
+                },
+                {
+                  "name": "Urbana",
+                  "value": "Urbana"
+                },
+                {
+                  "name": "Doble propósito",
+                  "value": "Doble propósito"
+                },
+                {
+                  "name": "Deportiva",
+                  "value": "Deportiva"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "uso_principal",
+              "displayName": "uso_principal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Trabajo / reparto",
+                  "value": "Trabajo / reparto"
+                },
+                {
+                  "name": "Transporte personal",
+                  "value": "Transporte personal"
+                },
+                {
+                  "name": "Gusto / deportivo",
+                  "value": "Gusto / deportivo"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "enganche_disponible",
+              "displayName": "enganche_disponible",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "presupuesto_declarado",
+              "displayName": "presupuesto_declarado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "como_conocio",
+              "displayName": "como_conocio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Recomendación",
+                  "value": "Recomendación"
+                },
+                {
+                  "name": "Redes sociales",
+                  "value": "Redes sociales"
+                },
+                {
+                  "name": "Publicidad",
+                  "value": "Publicidad"
+                },
+                {
+                  "name": "Paso por sucursal",
+                  "value": "Paso por sucursal"
+                },
+                {
+                  "name": "Internet/Google",
+                  "value": "Internet/Google"
+                },
+                {
+                  "name": "Otro",
+                  "value": "Otro"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "signals_acumuladas",
+              "displayName": "signals_acumuladas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "objeciones_detectadas",
+              "displayName": "objeciones_detectadas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_intencion",
+              "displayName": "ultima_intencion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_summary",
+              "displayName": "lead_summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "bot_paused",
+              "displayName": "bot_paused",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_followup_at",
+              "displayName": "next_followup_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_followup_sent_at",
+              "displayName": "last_followup_sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "followups_count",
+              "displayName": "followups_count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "followup_respondido",
+              "displayName": "followup_respondido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_primera_interaccion",
+              "displayName": "fecha_primera_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "utm_source",
+              "displayName": "utm_source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "activo",
+              "displayName": "activo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal_interes",
+              "displayName": "sucursal_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "asesor_asignado",
+              "displayName": "asesor_asignado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Citas",
+              "displayName": "Citas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temperatura",
+              "displayName": "temperatura",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "fecha_asignacion",
+              "displayName": "fecha_asignacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_estado",
+              "displayName": "financiera_estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Sin enviar",
+                  "value": "Sin enviar"
+                },
+                {
+                  "name": "Enviado a financiera",
+                  "value": "Enviado a financiera"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_link_enviado_at",
+              "displayName": "financiera_link_enviado_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_respuesta_at",
+              "displayName": "financiera_respuesta_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_asignada",
+              "displayName": "financiera_asignada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_elegida",
+              "displayName": "financiera_elegida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal_asignada",
+              "displayName": "sucursal_asignada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "f0f08f88-0abd-4cb5-b729-05f280414026",
+      "name": "Airtable · Reset Lead",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst trig = $('When Executed by Another Workflow').first().json;\nlet keys = [];\ntry { keys = $('Code · Armar Llaves').all().map(i => i.json.key); } catch(e) {}\n\nlet memoria_borrada = null;\ntry {\n  const r = $('Postgres · Borrar Memoria Agente').all();\n  memoria_borrada = r.length;\n} catch(e) { memoria_borrada = 'no ejecutado'; }\n\nlet lead_reseteado = false;\ntry { lead_reseteado = !!$('Airtable · Reset Lead').first().json.id; } catch(e) {}\n\nreturn [{ json: {\n  ok: true,\n  user_id_canal: trig.user_id_canal,\n  redis_keys_borradas: keys.length,\n  redis_keys: keys,\n  memoria_postgres: memoria_borrada,\n  lead_airtable_reseteado: lead_reseteado,\n  mensaje: `Lead ${trig.user_id_canal} limpio. Redis: ${keys.length} llaves. `\n         + `Memoria: ${memoria_borrada}. Airtable: ${lead_reseteado ? 'reseteado' : 'sin tocar'}.`,\n  nota: 'El dedupe (msg:<message_id>) no se borra: es por mensaje, no por lead, y expira en 24h.',\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        112
+      ],
+      "id": "009a9928-3767-44fc-95b0-7ee5665699b6",
+      "name": "Code · Resumen",
+      "executeOnce": true
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id_canal": "+5219996167830",
+          "borrar_memoria_postgres": true,
+          "resetear_lead_airtable": true
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code · Armar Llaves",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Armar Llaves": {
+      "main": [
+        [
+          {
+            "node": "Redis · Borrar Llave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Borrar Llave": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Borrar memoria?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Borrar memoria?": {
+      "main": [
+        [
+          {
+            "node": "Postgres · Borrar Memoria Agente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If · ¿Resetear lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres · Borrar Memoria Agente": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Resetear lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Resetear lead?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Reset Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code · Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Reset Lead": {
+      "main": [
+        [
+          {
+            "node": "Code · Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3058e817-1076-4376-8c95-07b047b18753",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "C363QNZlBOamY6KZ",
+  "tags": []
+}

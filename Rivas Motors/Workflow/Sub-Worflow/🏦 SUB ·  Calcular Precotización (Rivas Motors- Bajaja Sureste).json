@@ -1,0 +1,1150 @@
+{
+  "name": "🏦 SUB ·  Calcular Precotización (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "modelo"
+            },
+            {
+              "name": "enganche"
+            },
+            {
+              "name": "plazo_meses"
+            },
+            {
+              "name": "financiera"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        608
+      ],
+      "id": "f56d042d-236b-4cbc-a0e7-69a3e2ea331a",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnzq7bM3Dh84R7U",
+          "mode": "list",
+          "cachedResultName": "Financieras",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblnzq7bM3Dh84R7U"
+        },
+        "filterByFormula": "={activa}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1968,
+        -1200
+      ],
+      "id": "2eb99fba-e54a-4b2d-b8de-c83558453b21",
+      "name": "Airtable · Get Financiera",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDDVZuC2hVbFNo",
+          "mode": "list",
+          "cachedResultName": "Modelos",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblVDDVZuC2hVbFNo"
+        },
+        "filterByFormula": "={nombre} = \"{{ $('When Executed by Another Workflow').item.json.modelo }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1744,
+        -1200
+      ],
+      "id": "e1f95ec8-5b3e-4884-afe0-c4892be41b28",
+      "name": "Airtable · Get Modelo",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst t = $('When Executed by Another Workflow').first().json;\nconst modeloName = String(t.modelo || '').trim();\nconst enganche   = Number(t.enganche) || 0;\nlet   plazo      = Number(t.plazo_meses) || 0;\n\n// ---- Financiera activa ----\nlet fin = {}; let finId = null;\ntry { const r = $('Airtable · Get Financiera').first().json; finId = r && r.id; fin = F(r); } catch(e) {}\nconst tasaPct   = Number(fin.tasa_anual_pct);\nconst tasaAnual = (isFinite(tasaPct) && tasaPct > 0) ? tasaPct/100 : 0.36; // fallback EJEMPLO\nconst plazos    = String(fin.plazos_disponibles || '12,24,36').split(',').map(s=>parseInt(s.trim(),10)).filter(Boolean);\nconst engMinPct = Number(fin.enganche_minimo_pct) || 20;\nconst link      = fin.link_base || '';\nconst finNombre = fin.nombre || 'la financiera';\n\n// ---- Precio del modelo (fuente de verdad: tabla Modelos) ----\n// NOTA: se usa el precio de LISTA. El bono de promo es de CONTADO, no aplica a crédito.\nlet mod = {};\ntry { mod = F($('Airtable · Get Modelo').first().json); } catch(e) {}\nconst precio = Number(mod.precio) || 0;\n\nconst fmt = (n) => '$' + Math.round(Number(n)).toLocaleString('en-US');\n\n// ---- Validaciones ----\nif (!modeloName || !precio) {\n  return [{ json: { ok:false, motivo:'sin_precio',\n    mensaje_agente: 'No pude tomar el precio de ese modelo del catálogo. Pregúntale al cliente qué modelo exacto le interesa y vuelve a intentar; si el modelo no está en el catálogo, ofrécele pasarlo con un asesor.' }}];\n}\n\n// Plazo: si no viene o no está en los que maneja la financiera, usa el más cercano disponible.\nif (!plazo) plazo = plazos[plazos.length-1] || 24;\nif (plazos.length && !plazos.includes(plazo)) {\n  plazo = plazos.reduce((a,b) => Math.abs(b-plazo) < Math.abs(a-plazo) ? b : a, plazos[0]);\n}\n\nconst engMin = Math.round(precio * engMinPct / 100);\nconst engancheUsado = Math.max(enganche, 0);\nconst engancheInsuficiente = engancheUsado < engMin;\n\nconst monto = Math.max(0, precio - engancheUsado);\nconst i = tasaAnual / 12;\nlet mensualidad = (i === 0) ? (plazo ? monto/plazo : 0)\n                            : monto * (i * Math.pow(1+i, plazo)) / (Math.pow(1+i, plazo) - 1);\nmensualidad = Math.round(mensualidad);\nconst totalPagar = Math.round(mensualidad * plazo + engancheUsado);\n\nlet mensaje_agente =\n  `PRECOTIZACIÓN ESTIMADA (compártela con el cliente en tus palabras, tono natural):\\n` +\n  `• Modelo: ${modeloName} — precio de lista ${fmt(precio)}\\n` +\n  `• Enganche considerado: ${fmt(engancheUsado)}\\n` +\n  `• Plazo: ${plazo} meses\\n` +\n  `• Mensualidad estimada: ${fmt(mensualidad)}\\n` +\n  `• Total estimado a pagar: ${fmt(totalPagar)}\\n\\n` +\n  `REGLAS AL DARLA:\\n` +\n  `- Dile SIEMPRE que es una PRECOTIZACIÓN estimada y que el monto final lo define ${finNombre} al revisar su solicitud.\\n` +\n  `- NO prometas aprobación.\\n`;\n\nif (engancheInsuficiente) {\n  mensaje_agente += `- OJO: el enganche que dio (${fmt(engancheUsado)}) está por debajo del mínimo sugerido (${fmt(engMin)}, ${engMinPct}%). Coméntaselo con tacto y anímalo a subirlo, pero igual puede intentar la solicitud.\\n`;\n}\nif (plazos.length > 1) {\n  mensaje_agente += `- Plazos disponibles: ${plazos.join(', ')} meses. Si quiere ver otro plazo, vuelve a llamar la tool con ese plazo.\\n`;\n}\n\nif (link) {\n  mensaje_agente += `\\nSIGUIENTE PASO — MÁNDALE ESTE LINK TAL CUAL (no lo modifiques):\\n${link}\\n` +\n    `Explícale que ahí llena sus datos con ${finNombre} y que en cuanto tengan respuesta se la avisas por aquí mismo.`;\n} else {\n  mensaje_agente += `\\nNo hay link de solicitud configurado. Ofrécele pasarlo con un asesor para continuar el trámite.`;\n}\n\nreturn [{ json: {\n  ok: true,\n  user_id_canal: t.user_id_canal,\n  modelo: modeloName, precio,\n  enganche: engancheUsado, enganche_minimo: engMin, enganche_insuficiente: engancheInsuficiente,\n  plazo_meses: plazo, plazos_disponibles: plazos,\n  tasa_anual: tasaAnual, mensualidad_estimada: mensualidad, total_a_pagar: totalPagar,\n  financiera_nombre: finNombre, financiera_rec: finId, link,\n  mensaje_agente\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        -1200
+      ],
+      "id": "b831230f-7329-48d0-941f-dea886ba1e0e",
+      "name": "Code · Calcular Precotización",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "okcalc",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1312,
+        -1200
+      ],
+      "id": "5c217d70-a9f6-4b98-ad1c-93681fa70f80",
+      "name": "If · ¿Precotización OK?",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Calcular Precotización').first().json.user_id_canal }}",
+            "financiera_estado": "Enviado a financiera",
+            "financiera_link_enviado_at": "={{ $now.toISO() }}",
+            "etapa_pipeline": "En financiera",
+            "financiera_asignada": "={{ $('Code · Calcular Precotización').first().json.financiera_rec ? [ $('Code · Calcular Precotización').first().json.financiera_rec ] : [] }}",
+            "forma_pago_preferida": "Crédito / financiamiento",
+            "ultima_interaccion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_estado",
+              "displayName": "financiera_estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Sin enviar",
+                  "value": "Sin enviar"
+                },
+                {
+                  "name": "Enviado a financiera",
+                  "value": "Enviado a financiera"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ]
+            },
+            {
+              "id": "financiera_link_enviado_at",
+              "displayName": "financiera_link_enviado_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "En financiera",
+                  "value": "En financiera"
+                },
+                {
+                  "name": "Aprobado por financiera",
+                  "value": "Aprobado por financiera"
+                },
+                {
+                  "name": "Rechazado por financiera",
+                  "value": "Rechazado por financiera"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ]
+            },
+            {
+              "id": "financiera_asignada",
+              "displayName": "financiera_asignada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ]
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1088,
+        -1344
+      ],
+      "id": "b1e03247-733e-4c4a-b4d1-6b84b30556fe",
+      "name": "Airtable · Marcar Enviado a Financiera",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Calcular Precotización').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        -1344
+      ],
+      "id": "dd4211b6-9901-48e3-8ea1-b14b103ef1b6",
+      "name": "Redis · Invalidate Lead Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r-ok",
+              "name": "ok",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "r-msg",
+              "name": "mensaje_agente",
+              "value": "={{ $('Code · Calcular Precotización').first().json.mensaje_agente }}",
+              "type": "string"
+            },
+            {
+              "id": "r-link",
+              "name": "link",
+              "value": "={{ $('Code · Calcular Precotización').first().json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "r-men",
+              "name": "mensualidad_estimada",
+              "value": "={{ $('Code · Calcular Precotización').first().json.mensualidad_estimada }}",
+              "type": "number"
+            },
+            {
+              "id": "r-plz",
+              "name": "plazo_meses",
+              "value": "={{ $('Code · Calcular Precotización').first().json.plazo_meses }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        -1344
+      ],
+      "id": "9e12e8c6-d95c-4a06-95ad-b5847b68ae17",
+      "name": "Set · Respuesta OK",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n-ok",
+              "name": "ok",
+              "value": "=false",
+              "type": "boolean"
+            },
+            {
+              "id": "n-msg",
+              "name": "mensaje_agente",
+              "value": "={{ $('Code · Calcular Precotización').first().json.mensaje_agente }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1088,
+        -1056
+      ],
+      "id": "bfc1f972-aa1d-4f93-9961-f81903a248ce",
+      "name": "Set · Respuesta Incompleta",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnzq7bM3Dh84R7U",
+          "mode": "list",
+          "cachedResultName": "Financieras",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblnzq7bM3Dh84R7U"
+        },
+        "filterByFormula": "=AND({activa}, LOWER({nombre}) = LOWER(\"{{ $('When Executed by Another Workflow').item.json.financiera }}\"))",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -992,
+        608
+      ],
+      "id": "86e8e656-fe01-410f-afdb-2bfe8f314ec6",
+      "name": "Airtable · Get Financiera1",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDDVZuC2hVbFNo",
+          "mode": "list",
+          "cachedResultName": "Modelos",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblVDDVZuC2hVbFNo"
+        },
+        "filterByFormula": "=",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -768,
+        608
+      ],
+      "id": "46fcf1d0-b7ca-4a22-9541-98ad606ffd04",
+      "name": "Airtable · Get Modelo1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\n\n// ── Normalizador de nombres de catálogo ────────────────────────────────────\n// El LLM nunca va a reproducir el nombre exacto del CRM. Esta función deja\n// \"Pulsar NS200\", \"pulsar ns-200\" y \"Bajaj  Pulsar NS 200\" en la misma forma\n// canónica: \"pulsar ns 200\". Clave: separa letras de números, porque el CRM\n// escribe \"NS 200\" y el agente casi siempre manda \"NS200\".\nfunction norm(s){\n  return String(s || '')\n    .toLowerCase()\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')   // acentos\n    .replace(/[^a-z0-9]+/g, ' ')                        // guiones, +, puntos…\n    .replace(/([a-z])(\\d)/g, '$1 $2')                   // ns200  -> ns 200\n    .replace(/(\\d)([a-z])/g, '$1 $2')                   // 200fi  -> 200 fi\n    .replace(/\\bbajaj\\b/g, ' ')                         // la marca no distingue\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nconst toks = (s) => norm(s).split(' ').filter(Boolean);\n\n// Busca `query` dentro de `lista` (cada item con .id y campo `campo`).\n// Devuelve { hit, candidatos, via }. Cascada de menos a más permisivo, y\n// si al final hay empate NO adivina: devuelve los candidatos para preguntar.\nfunction buscar(lista, query, campo){\n  const q = norm(query);\n  const qt = toks(query);\n  if (!q || !lista.length) return { hit:null, candidatos:[], via:'sin_query' };\n\n  const conNorm = lista.map(x => ({ ...x, _n: norm(x[campo]), _t: toks(x[campo]) }));\n\n  // 1. Igual ya normalizado — \"Pulsar NS200\" == \"Pulsar NS 200\"\n  let c = conNorm.filter(x => x._n === q);\n  if (c.length === 1) return { hit:c[0], candidatos:c, via:'exacto' };\n\n  // 2. Todos los tokens de la búsqueda están en el candidato.\n  //    Gana el que tenga MENOS palabras de más: entre \"Pulsar NS 200\" y\n  //    \"Pulsar NS 200 FI ABS\", para \"NS200\" gana el primero.\n  c = conNorm.filter(x => qt.every(t => x._t.includes(t)));\n  if (c.length) {\n    c.sort((a,b) => (a._t.length - qt.length) - (b._t.length - qt.length));\n    const mejor = a => a._t.length - qt.length;\n    const empatados = c.filter(x => mejor(x) === mejor(c[0]));\n    if (empatados.length === 1) return { hit:c[0], candidatos:c, via:'contiene' };\n    return { hit:null, candidatos:empatados, via:'ambiguo' };\n  }\n\n  // 3. Al revés: el cliente escribió de más (\"Pulsar NS200 modelo 2026\").\n  c = conNorm.filter(x => x._t.length && x._t.every(t => qt.includes(t)));\n  if (c.length === 1) return { hit:c[0], candidatos:c, via:'contenido_en_query' };\n  if (c.length > 1)   return { hit:null, candidatos:c, via:'ambiguo' };\n\n  // 4. Último intento: mismo número de cilindrada + primera palabra.\n  const num = qt.find(t => /^\\d+$/.test(t));\n  if (num) {\n    c = conNorm.filter(x => x._t.includes(num) && x._t[0] === qt[0]);\n    if (c.length === 1) return { hit:c[0], candidatos:c, via:'cilindrada' };\n    if (c.length > 1)   return { hit:null, candidatos:c, via:'ambiguo' };\n  }\n\n  return { hit:null, candidatos:[], via:'no_encontrado' };\n}\n\nconst t = $('When Executed by Another Workflow').first().json;\nconst modeloName     = String(t.modelo || '').trim();\nconst enganche       = Number(t.enganche) || 0;\nlet   plazo          = Number(t.plazo_meses) || 0;\nconst financieraName = String(t.financiera || '').trim();\n\n// ---- Validar que llegue financiera ----\nif (!financieraName) {\n  return [{ json: { ok:false, motivo:'sin_financiera',\n    mensaje_agente: 'ANTES de calcular el aproximado necesitas que el cliente ELIJA una financiera. Preséntale las financieras disponibles (vienen en el contexto en financieras_disponibles), deja que el cliente escoja, guarda su elección con actualizar_lead(financiera_elegida:\"NOMBRE\") y luego vuelve a llamar esta tool pasando la financiera elegida.' }}];\n}\n\n// ---- Financiera: match tolerante sobre las activas ----\nlet financieras = [];\ntry {\n  financieras = $('Airtable · Get Financiera1').all().map(i=>i.json).filter(r=>r&&r.id)\n    .map(r => ({ id:r.id, ...F(r) }))\n    .filter(f => f.activa !== false);\n} catch(e) {}\n\nconst rFin = buscar(financieras, financieraName, 'nombre');\nlet fin = rFin.hit || null;\n// Segundo intento con el nombre corto, por si el agente usó el alias.\nif (!fin && rFin.via === 'no_encontrado') {\n  const r2 = buscar(financieras, financieraName, 'nombre_corto');\n  if (r2.hit) fin = r2.hit;\n}\n\nif (!fin) {\n  const nombres = financieras.map(f => f.nombre).filter(Boolean).join(', ');\n  return [{ json: { ok:false, motivo:'financiera_no_encontrada',\n    mensaje_agente: `No encontré la financiera \"${financieraName}\" activa en el catálogo. Las disponibles son: ${nombres || 'ninguna'}. Presenta al cliente SOLO ésas y deja que elija una.` }}];\n}\n\nconst finId     = fin.id;\nconst tasaPct   = Number(fin.tasa_anual_pct);\nconst tasaAnual = (isFinite(tasaPct) && tasaPct > 0) ? tasaPct/100 : 0.36;\nconst plazosStr = String(fin.plazos_valores || fin.plazos_disponibles || '12,24,36');\nconst plazos    = plazosStr.split(',').map(s=>parseInt(String(s).trim(),10)).filter(Boolean);\nconst engMinPct = Number(fin.enganche_minimo_pct) || 10;\nconst link      = fin.link_base || '';\nconst finNombre = fin.nombre_corto || fin.nombre || financieraName;\n\n// ---- Modelo: match tolerante sobre el catálogo activo ----\nlet modelos = [];\ntry {\n  modelos = $('Airtable · Get Modelo1').all().map(i=>i.json).filter(r=>r&&r.id)\n    .map(r => ({ id:r.id, ...F(r) }))\n    .filter(m => m.activo !== false);\n} catch(e) {}\n\nconst rMod = buscar(modelos, modeloName, 'nombre');\n\n// Si hay empate real, NO adivinamos: que el cliente decida cuál.\nif (!rMod.hit && rMod.via === 'ambiguo') {\n  const ops = rMod.candidatos.map(m => m.nombre).filter(Boolean);\n  return [{ json: { ok:false, motivo:'modelo_ambiguo', candidatos: ops,\n    mensaje_agente: `Hay varias versiones que coinciden con \"${modeloName}\": ${ops.join(', ')}. Pregúntale al cliente cuál de ésas quiere (menciónaselas tal cual) y vuelve a llamar la tool con el nombre completo.` }}];\n}\n\nconst mod    = rMod.hit || {};\nconst precio = Number(mod.precio) || 0;\nconst modeloReal = mod.nombre || modeloName;\n\nconst fmt = (n) => '$' + Math.round(Number(n)).toLocaleString('en-US');\n\nif (!modeloName || !precio) {\n  const ops = modelos.map(m => m.nombre).filter(Boolean).slice(0, 12).join(', ');\n  return [{ json: { ok:false, motivo:'sin_precio', match_via: rMod.via,\n    mensaje_agente: `No encontré \"${modeloName}\" con precio en el catálogo. Los modelos que sí tenemos son: ${ops}. Confirma con el cliente cuál le interesa (usa uno de esos nombres) y vuelve a intentar; si de plano no está, ofrécele pasarlo con un asesor.` }}];\n}\n\n// Plazo: si no viene o no está en los que maneja la financiera, usa el más cercano\nif (!plazo) plazo = plazos[plazos.length-1] || 24;\nif (plazos.length && !plazos.includes(plazo)) {\n  plazo = plazos.reduce((a,b) => Math.abs(b-plazo) < Math.abs(a-plazo) ? b : a, plazos[0]);\n}\n\nconst engMin = Math.round(precio * engMinPct / 100);\nconst engancheUsado = Math.max(enganche, 0);\nconst engancheInsuficiente = engancheUsado < engMin;\n\nconst monto = Math.max(0, precio - engancheUsado);\nconst i = tasaAnual / 12;\nlet mensualidad = (i === 0) ? (plazo ? monto/plazo : 0)\n                            : monto * (i * Math.pow(1+i, plazo)) / (Math.pow(1+i, plazo) - 1);\nmensualidad = Math.round(mensualidad);\nconst totalPagar = Math.round(mensualidad * plazo + engancheUsado);\n\nlet mensaje_agente =\n  `CÁLCULO APROXIMADO con ${finNombre} (compártelo con el cliente en tus palabras, tono natural):\\n` +\n  `• Modelo: ${modeloReal} — precio de lista ${fmt(precio)}\\n` +\n  `• Enganche considerado: ${fmt(engancheUsado)}\\n` +\n  `• Plazo: ${plazo} meses\\n` +\n  `• Mensualidad estimada: ${fmt(mensualidad)}\\n` +\n  `• Total estimado a pagar: ${fmt(totalPagar)}\\n\\n` +\n  `REGLAS AL DARLO:\\n` +\n  `- Usa las palabras \"APROXIMADO\" o \"ESTIMADO\" — NUNCA \"precotización\".\\n` +\n  `- Dile SIEMPRE que es un cálculo aproximado y que el monto final lo define ${finNombre} al revisar su solicitud.\\n` +\n  `- NO prometas aprobación.\\n`;\n\n// Si el nombre del CRM no es el que dijo el cliente, que el agente use el bueno.\nif (norm(modeloReal) !== norm(modeloName)) {\n  mensaje_agente += `- El nombre exacto del modelo en catálogo es \"${modeloReal}\" (el cliente dijo \"${modeloName}\"). Refiérete a él como \"${modeloReal}\".\\n`;\n}\nif (engancheInsuficiente) {\n  mensaje_agente += `- OJO: el enganche que dio (${fmt(engancheUsado)}) está por debajo del mínimo sugerido (${fmt(engMin)}, ${engMinPct}%). Coméntaselo con tacto y anímalo a subirlo, pero igual puede intentar la solicitud.\\n`;\n}\nif (plazos.length > 1) {\n  mensaje_agente += `- Plazos disponibles con ${finNombre}: ${plazos.join(', ')} meses. Si quiere ver otro plazo, vuelve a llamar la tool con ese plazo.\\n`;\n}\n\nif (link) {\n  mensaje_agente += `\\nSIGUIENTE PASO — MÁNDALE ESTE LINK TAL CUAL (no lo modifiques):\\n${link}\\n` +\n    `Explícale que ahí llena sus datos con ${finNombre} y que en cuanto tengan respuesta se la avisas por aquí mismo.`;\n} else {\n  mensaje_agente += `\\nNo hay link de solicitud configurado para ${finNombre}. Ofrécele pasarlo con un asesor para continuar el trámite.`;\n}\n\nreturn [{ json: {\n  ok: true,\n  user_id_canal: t.user_id_canal,\n  modelo: modeloReal, modelo_pedido: modeloName, match_via: rMod.via, precio,\n  enganche: engancheUsado, enganche_minimo: engMin, enganche_insuficiente: engancheInsuficiente,\n  plazo_meses: plazo, plazos_disponibles: plazos,\n  tasa_anual: tasaAnual, mensualidad_estimada: mensualidad, total_a_pagar: totalPagar,\n  financiera_nombre: finNombre, financiera_rec: finId, link,\n  mensaje_agente\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        608
+      ],
+      "id": "cf93ce5e-350c-434f-ab25-849cc8934e92",
+      "name": "Code · Calcular Precotización1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "okcalc",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -336,
+        608
+      ],
+      "id": "bcadbf8e-18ab-4343-9ad2-8fe8574dc447",
+      "name": "If · ¿Precotización OK?1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Calcular Precotización1').first().json.user_id_canal }}",
+            "financiera_estado": "Enviado a financiera",
+            "financiera_link_enviado_at": "={{ $now.toISO() }}",
+            "etapa_pipeline": "En financiera",
+            "financiera_asignada": "={{ $('Code · Calcular Precotización1').first().json.financiera_rec ? [ $('Code · Calcular Precotización1').first().json.financiera_rec ] : [] }}",
+            "forma_pago_preferida": "Crédito / financiamiento",
+            "ultima_interaccion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "financiera_estado",
+              "displayName": "financiera_estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Sin enviar",
+                  "value": "Sin enviar"
+                },
+                {
+                  "name": "Enviado a financiera",
+                  "value": "Enviado a financiera"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ]
+            },
+            {
+              "id": "financiera_link_enviado_at",
+              "displayName": "financiera_link_enviado_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "En financiera",
+                  "value": "En financiera"
+                },
+                {
+                  "name": "Aprobado por financiera",
+                  "value": "Aprobado por financiera"
+                },
+                {
+                  "name": "Rechazado por financiera",
+                  "value": "Rechazado por financiera"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ]
+            },
+            {
+              "id": "financiera_asignada",
+              "displayName": "financiera_asignada",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "forma_pago_preferida",
+              "displayName": "forma_pago_preferida",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "readOnly": false,
+              "removed": false,
+              "options": [
+                {
+                  "name": "Contado",
+                  "value": "Contado"
+                },
+                {
+                  "name": "Crédito / financiamiento",
+                  "value": "Crédito / financiamiento"
+                },
+                {
+                  "name": "Aún no sabe",
+                  "value": "Aún no sabe"
+                }
+              ]
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        464
+      ],
+      "id": "8197b6d7-206b-4aaa-b262-c79678c02970",
+      "name": "Airtable · Marcar Enviado a Financiera1",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Calcular Precotización1').first().json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        112,
+        464
+      ],
+      "id": "fcda123b-f509-434a-8d55-cd189a62a7fd",
+      "name": "Redis · Invalidate Lead Cache1",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r-ok",
+              "name": "ok",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "r-msg",
+              "name": "mensaje_agente",
+              "value": "={{ $('Code · Calcular Precotización1').first().json.mensaje_agente }}",
+              "type": "string"
+            },
+            {
+              "id": "r-link",
+              "name": "link",
+              "value": "={{ $('Code · Calcular Precotización1').first().json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "r-men",
+              "name": "mensualidad_estimada",
+              "value": "={{ $('Code · Calcular Precotización1').first().json.mensualidad_estimada }}",
+              "type": "number"
+            },
+            {
+              "id": "r-plz",
+              "name": "plazo_meses",
+              "value": "={{ $('Code · Calcular Precotización1').first().json.plazo_meses }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        464
+      ],
+      "id": "0817292b-ee08-48f4-ae0d-7961f9d60e05",
+      "name": "Set · Respuesta OK1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n-ok",
+              "name": "ok",
+              "value": "=false",
+              "type": "boolean"
+            },
+            {
+              "id": "n-msg",
+              "name": "mensaje_agente",
+              "value": "={{ $('Code · Calcular Precotización1').first().json.mensaje_agente }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        752
+      ],
+      "id": "babad290-393c-4864-9b6b-df0a1d35f4c0",
+      "name": "Set · Respuesta Incompleta1"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id_canal": "martinnn_j1",
+          "modelo": "Pulsar NS200",
+          "enganche": "40000",
+          "plazo_meses": "12",
+          "financiera": "Galgo"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Financiera1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Financiera": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Modelo": {
+      "main": [
+        [
+          {
+            "node": "Code · Calcular Precotización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Calcular Precotización": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Precotización OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Precotización OK?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Marcar Enviado a Financiera",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set · Respuesta Incompleta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Marcar Enviado a Financiera": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache": {
+      "main": [
+        [
+          {
+            "node": "Set · Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Financiera1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Modelo1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Modelo1": {
+      "main": [
+        [
+          {
+            "node": "Code · Calcular Precotización1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Calcular Precotización1": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Precotización OK?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Precotización OK?1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Marcar Enviado a Financiera1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set · Respuesta Incompleta1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Marcar Enviado a Financiera1": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache1": {
+      "main": [
+        [
+          {
+            "node": "Set · Respuesta OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "80e4743f-e9ad-46b6-af37-1308863d9a60",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "cYUAv1Wm4qmLsdCv",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

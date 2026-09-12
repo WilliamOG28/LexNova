@@ -1,0 +1,150 @@
+{
+  "name": "🤔❓ SUB · FAQ Lookup (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tema"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        -288
+      ],
+      "id": "74be6704-2180-4135-96bc-3911cae58fb0",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl8oMusyXl1N8o3K",
+          "mode": "list",
+          "cachedResultName": "FAQs",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl8oMusyXl1N8o3K"
+        },
+        "filterByFormula": "=AND({tema} = \"{{ $('When Executed by Another Workflow').item.json.tema }}\", {faq_activa})",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        -288
+      ],
+      "id": "a7ae5f1c-555e-4878-86f0-fe5e58088746",
+      "name": "Airtable · Get FAQ",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('When Executed by Another Workflow').item.json;\n\nlet rows = [];\ntry { rows = $('Airtable · Get FAQ').all(); } catch (e) {}\nconst hit = rows.find(r => r.json && r.json.id);\n\nif (!hit) {\n  return [{ json: {\n    ok: false,\n    no_encontrada: true,\n    tema: t.tema,\n    respuesta: 'No tengo una respuesta oficial para ese tema. Si quieres, lo paso con un asesor para darte el detalle exacto.'\n  } }];\n}\n\nconst f = hit.json.fields || {};\nreturn [{ json: {\n  ok: true,\n  no_encontrada: false,\n  tema: f.tema || t.tema,\n  pregunta: f.pregunta || '',\n  respuesta: f.respuesta || ''\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -288
+      ],
+      "id": "80be5eaf-7983-4cb5-a850-9009cc36b6b9",
+      "name": "Code · Build FAQ Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get FAQ": {
+      "main": [
+        [
+          {
+            "node": "Code · Build FAQ Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "eaf0f521-bfb1-4d89-963f-93bdf18253c7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "oErm1xnX6IX7qhOO",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

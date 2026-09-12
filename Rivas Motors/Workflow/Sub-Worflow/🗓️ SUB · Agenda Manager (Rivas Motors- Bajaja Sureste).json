@@ -1,0 +1,1096 @@
+{
+  "name": "🗓️ SUB · Agenda Manager (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "lead_id"
+            },
+            {
+              "name": "tipo_cita"
+            },
+            {
+              "name": "fecha"
+            },
+            {
+              "name": "hora"
+            },
+            {
+              "name": "modelo"
+            },
+            {
+              "name": "notas"
+            },
+            {
+              "name": "sucursal_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3632,
+        3200
+      ],
+      "id": "b5e9f06e-2af3-4e66-9462-2d2ef50b53b6",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('When Executed by Another Workflow').item.json;\nconst MAP_TIPO = {\n 'prueba de manejo':'Prueba de manejo','prueba':'Prueba de manejo','test drive':'Prueba de manejo','manejo':'Prueba de manejo',\n 'visita':'Visita a sucursal','visita a sucursal':'Visita a sucursal','sucursal':'Visita a sucursal','presencial':'Visita a sucursal',\n 'llamada':'Llamada','telefono':'Llamada','call':'Llamada',\n 'financiamiento':'Cita de financiamiento','credito':'Cita de financiamiento','crédito':'Cita de financiamiento','cita de financiamiento':'Cita de financiamiento',\n 'videollamada':'Videollamada','video':'Videollamada'\n};\nconst tipo = MAP_TIPO[String(t.tipo_cita||'').trim().toLowerCase()] || 'Visita a sucursal';\nconst DUR = {'Prueba de manejo':45,'Visita a sucursal':30,'Llamada':20,'Cita de financiamiento':45,'Videollamada':30};\nconst duracion_min = DUR[tipo] || 30;\n\nconst fecha=String(t.fecha||'').trim(), hora=String(t.hora||'').trim();\nconst fechaOk=/^\\d{4}-\\d{2}-\\d{2}$/.test(fecha), horaOk=/^\\d{2}:\\d{2}$/.test(hora);\nif(!fechaOk||!horaOk){ return [{json:{ok:false,datos_invalidos:true,tipo_cita:tipo,mensaje_agente:'No pude leer bien la fecha u hora. ¿Me confirmas el día (por ejemplo 20 de junio) y la hora?'}}]; }\n\nconst fecha_hora_inicio=`${fecha}T${hora}:00-06:00`;\nconst inicio=new Date(fecha_hora_inicio);\nconst desde=new Date(inicio.getTime()-60*60000).toISOString();\nconst hasta=new Date(inicio.getTime()+60*60000).toISOString();\nconst [yy,mm,dd]=fecha.split('-');\nconst telDigits=String(t.user_id_canal||'').replace(/[^0-9]/g,'');\nconst cita_id=`${dd}${mm}${yy}-${telDigits}`;\n\nreturn [{json:{ ok:true, tipo_cita:tipo, duracion_min, fecha, hora, fecha_hora_inicio,\n  ventana_desde:desde, ventana_hasta:hasta, cita_id, user_id_canal:t.user_id_canal,\n  lead_id:t.lead_id||null, modelo:t.modelo||'', notas:t.notas||'', sucursal_id:t.sucursal_id||'' }}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3424,
+        3200
+      ],
+      "id": "f3104660-1dc7-441f-9508-d991e140c2f3",
+      "name": "Code · Validate & Prep1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "If · Datos Válidos?-c",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3200,
+        3200
+      ],
+      "id": "d2d5fab5-e552-4ae6-a517-9247cd341cbd",
+      "name": "If · Datos Válidos?1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -2976,
+        3296
+      ],
+      "id": "221e5245-2cd0-4b6c-b080-0539637a3a5b",
+      "name": "NoOp · Datos Inválidos1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl92B5KJskwxUM1b"
+        },
+        "filterByFormula": "={sucursal_id} = \"{{ $('Code · Validate & Prep1').first().json.sucursal_id }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2976,
+        3104
+      ],
+      "id": "e191a01b-7791-4001-b9b3-0299a335d537",
+      "name": "Airtable · Get Sucursal1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "list",
+          "cachedResultName": "Citas",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblfPtXQv8QrTrywc"
+        },
+        "filterByFormula": "=AND(IS_AFTER({fecha_hora_inicio}, \"{{ $('Code · Validate & Prep1').item.json.ventana_desde }}\"), IS_BEFORE({fecha_hora_inicio}, \"{{ $('Code · Validate & Prep1').item.json.ventana_hasta }}\"), NOT({estado} = \"Cancelada\"))",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2752,
+        3104
+      ],
+      "id": "aa076f73-7e3e-4b4b-8a96-ad72c9bb7ad7",
+      "name": "Airtable · Check Conflicts1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst prep = $('Code · Validate & Prep1').first().json;\n\n// recId de la sucursal destino\nlet sucRec=null;\ntry { const s=$('Airtable · Get Sucursal1').first().json; if(s && s.id) sucRec=s.id; } catch(e){}\n\nlet rows = []; try { rows = $('Airtable · Check Conflicts1').all().map(i=>i.json).filter(r=>r && r.id); } catch(e){}\n\n// El filtro por sucursal NO puede ir en filterByFormula: ARRAYJOIN() de un campo\n// link devuelve el PRIMARY (ej. \"MOT\"), no el recId, asi que FIND(recId, ...) da\n// siempre 0 y NINGUNA cita se contaba como conflicto. El API si entrega el link\n// como array de recIds, por eso se compara aqui.\nconst F = r => (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{});\nconst conflictos = rows.filter(r => {\n  const f = F(r);\n  const suc = Array.isArray(f.sucursal) ? f.sucursal : [];\n  return sucRec ? suc.includes(sucRec) : true;   // sin sucursal resuelta, se es conservador\n});\n\nif (conflictos.length > 0) {\n  const base = new Date(prep.fecha_hora_inicio);\n  const fmt = (dt)=> dt.toLocaleString('es-MX',{timeZone:'America/Merida',weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',hour12:true});\n  const alt1 = new Date(base.getTime()+2*3600*1000);\n  const alt2 = new Date(base.getTime()+24*3600*1000);\n  return [{ json: { ok:false, ocupado:true, tipo_cita:prep.tipo_cita,\n    mensaje_agente:`Ese horario ya está ocupado en esa sucursal. Te propongo: ${fmt(alt1)} o ${fmt(alt2)}. ¿Cuál te acomoda?` } }];\n}\nreturn [{ json: { ...prep, libre:true } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2528,
+        3104
+      ],
+      "id": "d2b7b804-8cfd-4272-8aa8-2c34d9aa1edd",
+      "name": "Code · Eval Conflicts1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "If · Libre?-c",
+              "leftValue": "={{ $json.libre }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2304,
+        3104
+      ],
+      "id": "fe53c49d-1b78-42fc-98bc-b1d2f5b722f1",
+      "name": "If · Libre?1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        3200
+      ],
+      "id": "16f16958-a75a-4fb9-b36d-df373d07d3e4",
+      "name": "NoOp · Ocupado (alternativas)1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('Code · Validate & Prep1').item.json.user_id_canal }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2080,
+        3008
+      ],
+      "id": "9e8f1e80-ee75-45a5-9700-cc1dfb8f45c1",
+      "name": "Airtable · Get Lead1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "list",
+          "cachedResultName": "Asesores",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl2rD4wXq6GhDAdo"
+        },
+        "filterByFormula": "={disponible} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1856,
+        3008
+      ],
+      "id": "87c6bb91-6a1d-418f-9bf2-865a3bf9f1cf",
+      "name": "Airtable · Get Asesor1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst v = $('Code · Validate & Prep1').first().json;\nlet lead={}; try{ lead = F($('Airtable · Get Lead1').first().json); }catch(e){}\nlet sucFromLookup=null; try{ const s=$('Airtable · Get Sucursal1').first().json; if(s && s.id) sucFromLookup=s.id; }catch(e){}\n\n// Guarda-espaldas: si el lead YA tiene sucursal guardada en el CRM, esa manda sobre\n// el sucursal_id que mando el LLM. Evita que una ciudad con varias sucursales\n// (Merida, Campeche) termine agendando con el asesor equivocado.\nconst sucLead = (lead.sucursal_interes && lead.sucursal_interes[0]) || null;\nlet sucursalOverride = false;\nif (sucLead && sucLead !== sucFromLookup) { sucFromLookup = sucLead; sucursalOverride = true; }\n\n// --- Elegir asesor: sucursal -> continuidad con el lead -> primero estable ---\n// El filtro por sucursal se hace aqui y no con filterByFormula: ARRAYJOIN() de un\n// link devuelve el primary, no el recId. Antes esto no matcheaba nunca y la cita\n// se creaba sin asesor.\nlet candidatos=[];\ntry { candidatos = $('Airtable · Get Asesor1').all().filter(x=>x.json && x.json.id)\n        .map(x=>{ const f=F(x.json); return { id:x.json.id, ...f }; }); } catch(e){}\n\nlet pool = sucFromLookup\n  ? candidatos.filter(x => Array.isArray(x.sucursal) && x.sucursal.includes(sucFromLookup))\n  : [];\nif (!pool.length) pool = candidatos.filter(x => String(x.asesor_id||'').trim().toUpperCase()==='CAP-LN');\nif (!pool.length) pool = candidatos.slice();\npool.sort((x,y)=>String(x.asesor_id||'').localeCompare(String(y.asesor_id||'')));\n\n// Continuidad: si el lead ya trae asesor del handoff, la cita va con el mismo.\nlet elegido=null;\nconst prevAsesor = (lead.asesor_asignado && lead.asesor_asignado[0]) || null;\nif (prevAsesor) elegido = pool.find(x=>x.id===prevAsesor) || null;\nif (!elegido) elegido = pool[0] || null;\n\nconst asesorRec = elegido ? { id: elegido.id } : {};\nconst a = elegido || {};\n\nconst dur = v.duracion_min||30;\nconst inicioEpoch = new Date(v.fecha_hora_inicio).getTime();\nfunction toMX(ms){ return new Date(ms-6*3600000).toISOString().replace('.000Z','')+'-06:00'; }\nconst fecha_hora_fin = toMX(inicioEpoch + dur*60000);\n\nconst leadEmail=lead.email||'', leadNombre=lead.nombre||v.user_id_canal;\nconst asesorEmail=a.email||'', asesorNombre=a.nombre||'Por asignar';\n\n// --- Datos para las notificaciones (Slack al asesor + mensaje al agente) ---\nconst asesorSlack = String(a.slack_id||'').trim();\nconst asesorTel   = String(a.telefono||'').trim();\nconst asesorCod   = String(a.asesor_id||'').trim();\n\nlet S = {};\ntry { const s=$('Airtable · Get Sucursal1').first().json; S = F(s); } catch(e){}\nconst sucNombre  = S.nombre || v.sucursal_id || 'Por definir';\nconst sucDir     = S.direccion || '';\nconst sucMaps    = S.google_maps || '';\nconst sucHorario = S.horario || '';\nconst sucTel     = S.whatsapp_publico || S.telefono || '';\n\n// Perfil del lead, para que el asesor llegue con contexto y no de cero.\nconst perfil = [\n  lead.ciudad     ? `Ciudad: ${lead.ciudad}` : '',\n  lead.colonia    ? `Colonia: ${lead.colonia}` : '',\n  lead.uso_principal        ? `Uso: ${lead.uso_principal}` : '',\n  lead.forma_pago_preferida ? `Pago: ${lead.forma_pago_preferida}` : '',\n  lead.enganche_disponible  ? `Enganche: $${Number(lead.enganche_disponible).toLocaleString('es-MX')}` : '',\n  lead.presupuesto_declarado? `Presupuesto: $${Number(lead.presupuesto_declarado).toLocaleString('es-MX')}` : '',\n  lead.financiera_elegida   ? `Financiera: ${lead.financiera_elegida}` : '',\n  lead.lead_score !== undefined && lead.lead_score !== null ? `Score: ${lead.lead_score}` : '',\n].filter(Boolean).join(' · ');\n\nconst fechaLegible = new Date(v.fecha_hora_inicio).toLocaleString('es-MX',\n  {timeZone:'America/Merida',weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',hour12:true});\n\nconst attendees=[]; if(asesorEmail)attendees.push(asesorEmail); if(leadEmail)attendees.push(leadEmail);\nconst summary=`${v.tipo_cita} · ${leadNombre} · ${v.modelo||'moto'}`;\nconst description=[`Tipo: ${v.tipo_cita}`,`Lead: ${leadNombre} (${v.user_id_canal})`,`Modelo de interés: ${v.modelo||'N/D'}`,`Sucursal: ${v.sucursal_id||'N/D'}`,`Asesor: ${asesorNombre}`, v.notas?`Notas: ${v.notas}`:''].filter(Boolean).join('\\n');\n\nconst sucursal_rec = sucFromLookup || (Array.isArray(a.sucursal)&&a.sucursal[0]) || null;\n\nreturn [{json:{ fecha_hora_inicio:v.fecha_hora_inicio, fecha_hora_fin, attendees, summary, description,\n  asesor_id: asesorRec.id||null, asesor_email:asesorEmail, asesor_nombre:asesorNombre,\n  asesor_slack_id: asesorSlack, asesor_telefono: asesorTel, asesor_codigo: asesorCod,\n  tiene_slack: !!asesorSlack,\n  lead_email:leadEmail, lead_nombre:leadNombre, lead_perfil: perfil,\n  lead_telefono: String(v.user_id_canal||'').replace(/[^0-9]/g,''),\n  sucursal_rec, sucursal_override: sucursalOverride,\n  sucursal_nombre: sucNombre, sucursal_direccion: sucDir, sucursal_maps: sucMaps,\n  sucursal_horario: sucHorario, sucursal_telefono: sucTel,\n  fecha_legible: fechaLegible, duracion_min: dur }}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1632,
+        3008
+      ],
+      "id": "98e79a1a-bd58-4b60-986b-72ad334ea504",
+      "name": "Code · Prep Event1"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "list",
+          "cachedResultName": "Citas",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblfPtXQv8QrTrywc"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cita_id": "={{ $('Code · Validate & Prep1').item.json.cita_id }}",
+            "user_id_canal": "={{ $('Code · Validate & Prep1').item.json.user_id_canal }}",
+            "lead": "={{ $('Airtable · Get Lead1').first().json.id ? [$('Airtable · Get Lead1').first().json.id] : [] }}",
+            "tipo_cita": "={{ $('Code · Validate & Prep1').item.json.tipo_cita }}",
+            "fecha_hora_inicio": "={{ $('Code · Validate & Prep1').item.json.fecha_hora_inicio }}",
+            "estado": "Solicitada",
+            "modelo_interes": "={{ $('Code · Validate & Prep1').item.json.modelo }}",
+            "notas": "={{ $('Code · Validate & Prep1').item.json.notas }}",
+            "creada_en": "={{ $now.toISO() }}",
+            "sucursal": "={{ $('Code · Prep Event1').item.json.sucursal_rec ? [$('Code · Prep Event1').item.json.sucursal_rec] : [] }}",
+            "asesor": "={{ $('Code · Prep Event1').item.json.asesor_id ? [$('Code · Prep Event1').item.json.asesor_id] : [] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "cita_id",
+              "displayName": "cita_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tipo_cita",
+              "displayName": "tipo_cita",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Prueba de manejo",
+                  "value": "Prueba de manejo"
+                },
+                {
+                  "name": "Visita a sucursal",
+                  "value": "Visita a sucursal"
+                },
+                {
+                  "name": "Llamada",
+                  "value": "Llamada"
+                },
+                {
+                  "name": "Cita de financiamiento",
+                  "value": "Cita de financiamiento"
+                },
+                {
+                  "name": "Videollamada",
+                  "value": "Videollamada"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_hora_inicio",
+              "displayName": "fecha_hora_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Solicitada",
+                  "value": "Solicitada"
+                },
+                {
+                  "name": "Confirmada",
+                  "value": "Confirmada"
+                },
+                {
+                  "name": "Completada",
+                  "value": "Completada"
+                },
+                {
+                  "name": "Cancelada",
+                  "value": "Cancelada"
+                },
+                {
+                  "name": "No asistió",
+                  "value": "No asistió"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "modelo_interes",
+              "displayName": "modelo_interes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "creada_en",
+              "displayName": "creada_en",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead",
+              "displayName": "lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sucursal",
+              "displayName": "sucursal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "asesor",
+              "displayName": "asesor",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1408,
+        3008
+      ],
+      "id": "06e55964-6b55-4bd6-bcec-1c112fa6d6e4",
+      "name": "Airtable · Create Cita1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblcvSBRV0dxGYIOq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Validate & Prep1').item.json.user_id_canal }}",
+            "etapa_pipeline": "Agendado",
+            "ultima_interaccion": "={{ $now.toISO() }}",
+            "asesor_asignado": "={{ $('Code · Prep Event1').item.json.asesor_id ? [$('Code · Prep Event1').item.json.asesor_id] : [] }}"
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "etapa_pipeline",
+              "displayName": "etapa_pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Contacto inicial",
+                  "value": "Contacto inicial"
+                },
+                {
+                  "name": "Calificado",
+                  "value": "Calificado"
+                },
+                {
+                  "name": "Negociando",
+                  "value": "Negociando"
+                },
+                {
+                  "name": "Agendado",
+                  "value": "Agendado"
+                },
+                {
+                  "name": "En conversación humana",
+                  "value": "En conversación humana"
+                },
+                {
+                  "name": "En seguimiento manual por reenganche",
+                  "value": "En seguimiento manual por reenganche"
+                },
+                {
+                  "name": "Cerrado (venta)",
+                  "value": "Cerrado (venta)"
+                },
+                {
+                  "name": "Perdido",
+                  "value": "Perdido"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ultima_interaccion",
+              "displayName": "ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "asesor_asignado",
+              "displayName": "asesor_asignado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1184,
+        3008
+      ],
+      "id": "5ab5d446-8f42-4ab9-916a-62d19bf7c330",
+      "name": "Airtable · Update Lead Etapa1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=lead:{{ $('Code · Validate & Prep1').item.json.user_id_canal }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        3008
+      ],
+      "id": "6f4a535b-8d96-4951-9bbe-13f1f8da9818",
+      "name": "Redis · Invalidate Lead Cache1",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst v  = $('Code · Validate & Prep1').first().json;\nconst ev = $('Code · Prep Event1').first().json;\n\n// Mensaje que el AGENTE le repite al cliente. Va en burbujas (línea en blanco =\n// burbuja nueva), con lo que el cliente necesita para presentarse: cuándo, dónde\n// y con quién. Sin datos internos (nada de score, IDs ni códigos).\nconst b1 = `¡Listo! Te agendé tu ${v.tipo_cita.toLowerCase()} para el ${ev.fecha_legible}`\n         + (ev.modelo || v.modelo ? ` con la ${v.modelo}` : '') + '.';\n\nconst partes = [];\nif (ev.sucursal_nombre)    partes.push(`Es en ${ev.sucursal_nombre}`);\nif (ev.sucursal_direccion) partes.push(ev.sucursal_direccion);\nconst b2 = partes.length ? partes.join(', ') + '.' : '';\n\nconst b3 = (ev.asesor_nombre && ev.asesor_nombre !== 'Por asignar')\n  ? `Te va a atender ${ev.asesor_nombre}; él te confirma por aquí.`\n  : `Un asesor de la sucursal te confirma por aquí.`;\n\nconst b4 = ev.sucursal_maps ? `Aquí te dejo la ubicación: ${ev.sucursal_maps}` : '';\nconst b5 = ev.lead_email ? 'Te llega también la invitación por correo.' : '';\n\nconst mensaje = [b1, b2, b3, b4, b5].filter(Boolean).join('\\n\\n');\n\nreturn [{ json: {\n  ok: true,\n  creada: true,\n  cita_id: v.cita_id,\n  tipo_cita: v.tipo_cita,\n  fecha_legible: ev.fecha_legible,\n  asesor: ev.asesor_nombre,\n  asesor_notificado: ev.tiene_slack,\n  sucursal: ev.sucursal_nombre,\n  sucursal_direccion: ev.sucursal_direccion,\n  mensaje_agente: mensaje,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        3008
+      ],
+      "id": "39c5fca9-041a-4c5e-840e-be20f10404bb",
+      "name": "Code · Success Message1"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPWJ65WJD",
+          "mode": "id"
+        },
+        "text": "=:calendar: *Nueva cita agendada — Rivas Motors*\n*{{ $('Code · Validate & Prep1').first().json.tipo_cita }}* · {{ $('Code · Prep Event1').first().json.fecha_legible }}\n*Sucursal:* {{ $('Code · Prep Event1').first().json.sucursal_nombre }} ({{ $('Code · Validate & Prep1').first().json.sucursal_id }})\n*Asesor:* {{ $('Code · Prep Event1').first().json.asesor_nombre }}{{ $('Code · Prep Event1').first().json.tiene_slack ? ' <@' + $('Code · Prep Event1').first().json.asesor_slack_id + '>' : ' :warning: _sin Slack configurado_' }}\n*Cliente:* {{ $('Code · Prep Event1').first().json.lead_nombre }} · {{ $('Code · Validate & Prep1').first().json.user_id_canal }}\n*Modelo:* {{ $('Code · Validate & Prep1').first().json.modelo || 'N/D' }}\n{{ $('Code · Prep Event1').first().json.lead_perfil ? '*Perfil:* ' + $('Code · Prep Event1').first().json.lead_perfil + '\\n' : '' }}{{ $('Code · Validate & Prep1').first().json.notas ? '*Notas:* ' + $('Code · Validate & Prep1').first().json.notas : '' }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        2928
+      ],
+      "id": "e2749bab-86af-40c3-a8df-452abaaa91ea",
+      "name": "Slack · Notify Cita Rivas",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "webhookId": "6736aa06-bb5e-4c23-bd04-a6f7521b65c8",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "slk",
+              "leftValue": "={{ $('Code · Prep Event1').first().json.tiene_slack }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -512,
+        3200
+      ],
+      "id": "1e0d0711-d7a4-4958-bc17-9f53ded7b7ca",
+      "name": "If · ¿Asesor tiene Slack?"
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $('Code · Prep Event1').first().json.asesor_slack_id }}",
+          "mode": "id"
+        },
+        "text": "=:calendar: *Te asignaron una cita*\n*{{ $('Code · Validate & Prep1').first().json.tipo_cita }}* · {{ $('Code · Prep Event1').first().json.fecha_legible }} ({{ $('Code · Prep Event1').first().json.duracion_min }} min)\n*Sucursal:* {{ $('Code · Prep Event1').first().json.sucursal_nombre }}{{ $('Code · Prep Event1').first().json.sucursal_direccion ? ' — ' + $('Code · Prep Event1').first().json.sucursal_direccion : '' }}\n\n*Cliente:* {{ $('Code · Prep Event1').first().json.lead_nombre }}\n*WhatsApp:* <https://wa.me/{{ $('Code · Prep Event1').first().json.lead_telefono }}|{{ $('Code · Validate & Prep1').first().json.user_id_canal }}>\n*Modelo de interés:* {{ $('Code · Validate & Prep1').first().json.modelo || 'N/D' }}\n{{ $('Code · Prep Event1').first().json.lead_perfil ? '*Perfil:* ' + $('Code · Prep Event1').first().json.lead_perfil + '\\n' : '' }}{{ $('Code · Validate & Prep1').first().json.notas ? '*Notas del agente:* ' + $('Code · Validate & Prep1').first().json.notas + '\\n' : '' }}\n_Confírmale al cliente por WhatsApp antes de la cita._",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        3136
+      ],
+      "id": "48a7fb56-392b-4939-aa05-08951b490413",
+      "name": "Slack · Notify Cita Asesor",
+      "webhookId": "6736aa06-bb5e-4c23-bd04-a6f7521b65c8",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        3296
+      ],
+      "id": "00777df8-e7f6-4e28-91f7-3ae1fb66db5b",
+      "name": "NoOp · Asesor sin Slack"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id_canal": "+5219996167830",
+          "lead_id": null,
+          "tipo_cita": "Prueba de manejo",
+          "fecha": "2026-08-13",
+          "hora": "17:00",
+          "modelo": "Pulsar",
+          "notas": "Cliente solicita prueba de manejo a las 5pm. Nombre: A. S. Ciudad: Ticul. Sucursal: TIC.",
+          "sucursal_id": "TIC"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code · Validate & Prep1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Validate & Prep1": {
+      "main": [
+        [
+          {
+            "node": "If · Datos Válidos?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Datos Válidos?1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Sucursal1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Datos Inválidos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursal1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Check Conflicts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Check Conflicts1": {
+      "main": [
+        [
+          {
+            "node": "Code · Eval Conflicts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Eval Conflicts1": {
+      "main": [
+        [
+          {
+            "node": "If · Libre?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Libre?1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Ocupado (alternativas)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Lead1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Asesor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Asesor1": {
+      "main": [
+        [
+          {
+            "node": "Code · Prep Event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Prep Event1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Create Cita1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Create Cita1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Update Lead Etapa1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Update Lead Etapa1": {
+      "main": [
+        [
+          {
+            "node": "Redis · Invalidate Lead Cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Invalidate Lead Cache1": {
+      "main": [
+        [
+          {
+            "node": "Code · Success Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Success Message1": {
+      "main": [
+        [
+          {
+            "node": "Slack · Notify Cita Rivas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If · ¿Asesor tiene Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Asesor tiene Slack?": {
+      "main": [
+        [
+          {
+            "node": "Slack · Notify Cita Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Asesor sin Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "f6993a92-9a91-4d88-b582-9f8910101b4c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "v6dh081P1HaiMGau",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

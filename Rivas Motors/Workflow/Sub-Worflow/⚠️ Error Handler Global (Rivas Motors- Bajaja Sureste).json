@@ -1,0 +1,351 @@
+{
+  "name": "⚠️ Error Handler Global (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -16
+      ],
+      "id": "3413f8f3-54b7-466c-9ff6-a2528988a871",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const exec = $input.first().json.execution || {};\nconst wf   = $input.first().json.workflow   || {};\nconst err  = exec.error || {};\n\nconst nodoFallido  = err.node?.name || exec.lastNodeExecuted || 'desconocido';\nconst mensajeError = err.message    || 'Sin mensaje de error';\nconst stackTrace   = (err.stack     || '').split('\\n').slice(0, 3).join('\\n');\nconst urlEjecucion = exec.url       || '';\nconst workflowName = wf.name        || 'Workflow desconocido';\nconst workflowId   = wf.id          || '';\nconst timestamp    = new Date().toLocaleString('es-MX', { timeZone: 'America/Merida' });\n\n// Clasifica la severidad segun el nodo que fallo (nodos criticos del MAIN Rivas Motors).\nconst CRITICOS = [\n  'HTTP · Send to Chatwoot',\n  'Agent · Comercial',\n  'Router · Classify Intent',\n  'Switch · Route to Sub-Agent',\n  'Execute · Lead Hydrator',\n  'Execute · Clasificador Origen'\n];\nconst severidad = CRITICOS.includes(nodoFallido) ? '🔴 CRÍTICO' : '🟡 ADVERTENCIA';\n\nreturn [{\n  json: {\n    severidad,\n    workflow_name: workflowName,\n    workflow_id:   workflowId,\n    nodo_fallido:  nodoFallido,\n    mensaje_error: mensajeError,\n    stack_trace:   stackTrace,\n    url_ejecucion: urlEjecucion,\n    timestamp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        -16
+      ],
+      "id": "21d4e0e1-586f-4c56-84d3-40b1032541fb",
+      "name": "Code · Parse Error"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPS06BWN9",
+          "mode": "id"
+        },
+        "text": "={{ $json.severidad }} *Error en workflow*\n\n*Workflow:* {{ $json.workflow_name }}\n*Nodo fallido:* `{{ $json.nodo_fallido }}`\n*Error:* {{ $json.mensaje_error }}\n*Hora:* {{ $json.timestamp }}\n\n```\n{{ $json.stack_trace }}\n```\n\n🔗 <{{ $json.url_ejecucion }}|Ver ejecución en n8n>",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        -144
+      ],
+      "id": "8aeb8df8-0c45-40dc-a875-00e49d4bacee",
+      "name": "Slack · Alert Team",
+      "webhookId": "c9e3e3fc-2446-480d-b325-7a9dcb6c9398",
+      "credentials": {
+        "slackApi": {
+          "id": "mv9sgjA1vewZ2Ady",
+          "name": "Produccion Bajaj"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-critical",
+              "leftValue": "={{ $('Code · Parse Error').item.json.severidad }}",
+              "rightValue": "🔴 CRÍTICO",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        96
+      ],
+      "id": "e5c9ad9a-c245-40e5-abb8-8ebc2a3fd886",
+      "name": "If · Is Critical?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Intenta extraer conversation_id del mensaje de error o del stack (best-effort).\nconst err = $input.first().json;\nconst hay = `${err.stack_trace || ''} ${err.mensaje_error || ''}`;\nconst match = hay.match(/conversation[_\\s]?id[\"':\\s]+([\\d]+)/i);\nconst convId = match ? match[1] : null;\n\nreturn [{ json: { ...err, conversation_id: convId, has_conv_id: !!convId } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        96
+      ],
+      "id": "66f199b2-e297-4e78-9a8d-6a528f2f352b",
+      "name": "Code · Try Extract Conversation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-conv",
+              "leftValue": "={{ $json.has_conv_id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "98bcff04-29b0-47df-a90b-2eef840c50c5",
+      "name": "If · Has Conversation ID?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"content\": \"Perdona, tuve un inconveniente técnico. En un momento te atiendo. 🙏\",\n  \"message_type\": \"outgoing\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "affbbc9d-ae5e-4a97-a182-07c0448d40db",
+      "name": "HTTP · Fallback to Client",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        192
+      ],
+      "id": "baaf52e9-2270-43d0-85c5-d4be0455b850",
+      "name": "NoOp · No Conversation ID"
+    }
+  ],
+  "pinData": {
+    "Error Trigger": [
+      {
+        "json": {
+          "execution": {
+            "id": "32482",
+            "url": "https://estudio-cien-n8n-estudio-cien.fypjvd.easypanel.host/workflow/pe3buoiddO25QNqo/executions/32482",
+            "error": {
+              "level": "error",
+              "tags": {},
+              "message": "Cannot assign to read only property 'name' of object 'Error: Referenced node doesn't exist'",
+              "stack": "TypeError: Cannot assign to read only property 'name' of object 'Error: Referenced node doesn't exist'\n    at new ExecutionBaseError (/opt/runners/task-runner-javascript/node_modules/.pnpm/n8n-workflow@file+packages+workflow_zod@3.25.67/node_modules/n8n-workflow/dist/cjs/errors/abstract/execution-base.error.js:24:23)\n    at new ExpressionError (/opt/runners/task-runner-javascript/node_modules/.pnpm/n8n-workflow@file+packages+workflow_zod@3.25.67/node_modules/n8n-workflow/dist/cjs/errors/expression.error.js:19:13)\n    at createExpressionError (/opt/runners/task-runner-javascript/node_modules/.pnpm/n8n-workflow@file+packages+workflow_zod@3.25.67/node_modules/n8n-workflow/dist/cjs/workflow-data-proxy.js:682:24)\n    at $ (/opt/runners/task-runner-javascript/node_modules/.pnpm/n8n-workflow@file+packages+workflow_zod@3.25.67/node_modules/n8n-workflow/dist/cjs/workflow-data-proxy.js:916:31)\n    at VmCodeWrapper (evalmachine.<anonymous>:2:15)\n    at evalmachine.<anonymous>:22:2\n    at Script.runInContext (node:vm:149:12)\n    at runInContext (node:vm:301:6)\n    at result (/opt/runners/task-runner-javascript/dist/js-task-runner/js-task-runner.js:215:61)\n    at new Promise (<anonymous>)"
+            },
+            "lastNodeExecuted": "Code - Should Sync?",
+            "mode": "trigger",
+            "executionContext": {
+              "version": 1,
+              "establishedAt": 1788012053010,
+              "source": "trigger",
+              "triggerNode": {
+                "name": "Schedule Trigger",
+                "type": "n8n-nodes-base.scheduleTrigger"
+              },
+              "redaction": {
+                "version": 1,
+                "policy": "none"
+              }
+            }
+          },
+          "workflow": {
+            "id": "pe3buoiddO25QNqo",
+            "name": "SUB · Sync Monday to Airtable Inventario (Rivas Motors - Bajaj Sureste)"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Error": {
+      "main": [
+        [
+          {
+            "node": "Slack · Alert Team",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If · Is Critical?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Is Critical?": {
+      "main": [
+        [
+          {
+            "node": "Code · Try Extract Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Try Extract Conversation": {
+      "main": [
+        [
+          {
+            "node": "If · Has Conversation ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Has Conversation ID?": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Fallback to Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · No Conversation ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "2ac19555-39b9-4560-b8ad-8f775573cf7a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "A4QD9B2JE2Bb72nh",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

@@ -1,0 +1,769 @@
+{
+  "name": "🪞 SUB · CRM Region Mirror (Rivas Motors - Bajaj Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "sucursal_id_hint"
+            },
+            {
+              "name": "ciudad_hint"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3744,
+        3248
+      ],
+      "id": "2f802896-9169-4961-8bf7-bfe4188f57de",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "mirror_state",
+        "key": "=mirror:region:lead:{{ $('When Executed by Another Workflow').item.json.user_id_canal }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -3520,
+        3248
+      ],
+      "id": "223ed826-3f2c-4062-8ac6-623fbff08b0c",
+      "name": "Redis · Get Region Mirror State",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('When Executed by Another Workflow').item.json.user_id_canal }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3296,
+        3248
+      ],
+      "id": "7f929633-1e16-4ad9-912a-ba183d2b18fd",
+      "name": "Airtable · Get Lead",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3072,
+        3248
+      ],
+      "id": "9bc38db8-72f6-44ea-8e3e-d5ee97d57638",
+      "name": "Airtable · Get Sucursales",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "list",
+          "cachedResultName": "Asesores"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2848,
+        3248
+      ],
+      "id": "1ef2efb0-f881-47c3-9afc-aea1d449cf79",
+      "name": "Airtable · Get Asesores Maestro",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// ── SUB · CRM Region Mirror ─ Resolver Destino Región ────────────────────────\n// Misma lógica de resolución de sucursal que el Sucursal Mirror, pero el\n// destino es la base REGIONAL leída de suc.crm_base_id_region (sin mapeo en código).\n\nfunction F(r){ return (r && r.fields && typeof r.fields === 'object') ? r.fields : (r || {}); }\nfunction norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\nfunction hash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h)+str.charCodeAt(i); h=h&h; } return String(h>>>0); }\n\nconst trig = $('When Executed by Another Workflow').first().json;\nconst uid  = String(trig.user_id_canal || '').trim();\n\nconst out = (extra) => [{ json: Object.assign({ espejar:false, user_id_canal:uid }, extra) }];\n\nif (!uid) return out({ motivo:'sin_user_id_canal' });\n\n// ── estado previo del espejo regional ─────────────────────────────────────\nlet prev = { h:null, b:null };\ntry {\n  const raw = $('Redis · Get Region Mirror State').first().json.mirror_state;\n  if (raw) prev = (typeof raw === 'string') ? JSON.parse(raw) : raw;\n} catch(e) {}\n\n// ── lead maestro ──────────────────────────────────────────────────────────\nlet leadRec = null;\ntry { leadRec = $('Airtable · Get Lead').all().map(i=>i.json).filter(r=>r && r.id)[0] || null; } catch(e) {}\nif (!leadRec) return out({ motivo:'lead_no_encontrado' });\nconst L = F(leadRec);\n\n// ── catálogos ─────────────────────────────────────────────────────────────\nconst sucs = $('Airtable · Get Sucursales').all().map(i=>i.json).filter(r=>r && r.id).map(r=>({ id:r.id, ...F(r) }));\nlet asesores = [];\ntry { asesores = $('Airtable · Get Asesores Maestro').all().map(i=>i.json).filter(r=>r && r.id).map(r=>({ id:r.id, ...F(r) })); } catch(e) {}\n\n// ── resolver sucursal (misma lógica que Sucursal Mirror) ──────────────────\nlet suc = null, via = '';\n\nconst linkRec = Array.isArray(L.sucursal_interes) ? L.sucursal_interes[0] : null;\nif (linkRec) { suc = sucs.find(s => s.id === linkRec) || null; if (suc) via = 'link_lead'; }\n\nif (!suc && trig.sucursal_id_hint) {\n  const c = norm(trig.sucursal_id_hint);\n  suc = sucs.find(s => norm(s.sucursal_id) === c) || null;\n  if (suc) via = 'hint_main';\n}\n\nif (!suc) {\n  const ciudad = norm(L.ciudad || trig.ciudad_hint || '');\n  if (ciudad) {\n    let cand = sucs.filter(s => norm(s.ciudad) === ciudad);\n    if (!cand.length) {\n      cand = sucs.filter(s => String(s.cobertura_colonias||'').split(',').map(x=>norm(x)).filter(Boolean).includes(ciudad));\n    }\n    if (cand.length === 1) { suc = cand[0]; via = 'ciudad'; }\n    else if (cand.length > 1) {\n      const col = norm(L.colonia || '');\n      if (col.length >= 4) {\n        const p = cand.filter(s => norm(s.nombre).includes(col) || norm(s.sucursal_id) === col);\n        if (p.length === 1) { suc = p[0]; via = 'colonia'; }\n      }\n      // Para región NO necesitamos la sucursal exacta:\n      // si todas las candidatas comparten crm_base_id_region, tomamos cualquiera.\n      if (!suc) {\n        const regBases = [...new Set(cand.map(c => String(c.crm_base_id_region || '').trim()).filter(Boolean))];\n        if (regBases.length === 1) {\n          suc = cand[0]; // Misma región, tomamos cualquiera\n          via = 'ciudad_misma_region';\n        } else {\n          return out({ motivo:'ciudad_ambigua_multi_region', ciudad, candidatas: cand.map(c=>c.sucursal_id) });\n        }\n      }\n    }\n  }\n}\n\nif (!suc) return out({ motivo:'sin_sucursal' });\n\n// ── resolver región: directo de la columna crm_base_id_region ─────────────\nconst baseRegion = String(suc.crm_region_id || '').trim();\nif (!baseRegion || !/^app[A-Za-z0-9]{14}$/.test(baseRegion)) {\n  return out({ motivo:'sin_region_configurada', sucursal_id: suc.sucursal_id });\n}\n\n// ── asesor: recId del maestro → código asesor_id ──────────────────────────\nconst aRec = Array.isArray(L.asesor_asignado) ? L.asesor_asignado[0] : null;\nconst aObj = aRec ? asesores.find(a => a.id === aRec) : null;\nconst asesor_id_codigo = aObj ? String(aObj.asesor_id || '') : '';\n\n// ── payload espejo ────────────────────────────────────────────────────────\nconst raw = {\n  user_id_canal:              uid,\n  nombre:                     L.nombre,\n  canal_origen:               L.canal_origen,\n  conversation_id:            L.conversation_id,\n  email:                      L.email,\n  telefono:                   L.telefono,\n  ciudad:                     L.ciudad,\n  colonia:                    L.colonia,\n  etapa_pipeline:             L.etapa_pipeline,\n  lead_score:                 L.lead_score,\n  score_maximo:               L.score_maximo,\n  calificado:                 L.calificado,\n  modelo_interes:             L.modelo_interes,\n  categoria_interes:          L.categoria_interes,\n  uso_principal:              L.uso_principal,\n  forma_pago_preferida:       L.forma_pago_preferida,\n  enganche_disponible:        L.enganche_disponible,\n  presupuesto_declarado:      L.presupuesto_declarado,\n  como_conocio:               L.como_conocio,\n  signals_acumuladas:         L.signals_acumuladas,\n  objeciones_detectadas:      L.objeciones_detectadas,\n  ultima_intencion:           L.ultima_intencion,\n  lead_summary:               L.lead_summary,\n  bot_paused:                 L.bot_paused,\n  next_followup_at:           L.next_followup_at,\n  last_followup_sent_at:      L.last_followup_sent_at,\n  followups_count:            L.followups_count,\n  followup_respondido:        L.followup_respondido,\n  fecha_primera_interaccion:  L.fecha_primera_interaccion,\n  ultima_interaccion:         L.ultima_interaccion,\n  utm_source:                 L.utm_source,\n  activo:                     (L.activo === undefined ? true : L.activo),\n  fecha_asignacion:           L.fecha_asignacion,\n  financiera_estado:          L.financiera_estado,\n  financiera_link_enviado_at: L.financiera_link_enviado_at,\n  financiera_respuesta_at:    L.financiera_respuesta_at,\n  financiera_elegida:         L.financiera_elegida,\n  financiera_asignada:        L.financiera_elegida,\n  sucursal_interes:           suc.sucursal_id,\n};\n\n// Nunca mandes vacíos: pisarían datos o rompen dateTime/number/select.\nconst payload = {};\nfor (const k of Object.keys(raw)) {\n  const v = raw[k];\n  if (v === undefined || v === null || v === '') continue;\n  payload[k] = v;\n}\n\nconst h = hash(JSON.stringify(payload) + '|' + asesor_id_codigo + '|region:' + baseRegion);\n\nreturn [{ json: {\n  espejar: true,\n  user_id_canal: uid,\n  lead_rec_id: leadRec.id,\n  base_id: baseRegion,\n  base_prev: prev.b || null,\n  sucursal_id: suc.sucursal_id,\n  sucursal_rec_id: suc.id,\n  sucursal_nombre: suc.nombre || '',\n  via,\n  asesor_id_codigo,\n  hash: h,\n  hash_prev: prev.h || null,\n  cambio: h !== (prev.h || null),\n  cambio_region: !!(prev.b && prev.b !== baseRegion),\n  payload,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2624,
+        3248
+      ],
+      "id": "e579e959-7bbe-4de1-a44c-6f57805902b6",
+      "name": "Code · Resolver Destino Region"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "esp",
+              "leftValue": "={{ $json.espejar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "cam",
+              "leftValue": "={{ $json.cambio }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2400,
+        3248
+      ],
+      "id": "63725366-3855-4845-9ef1-c7b1f256e2a3",
+      "name": "If · ¿Espejar Región?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -2176,
+        3344
+      ],
+      "id": "ce3e454d-e6c1-43d2-92db-5547f9bbee8b",
+      "name": "NoOp · Sin Espejo Región"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "={{ $json.base_id }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2rD4wXq6GhDAdo",
+          "mode": "id",
+          "cachedResultName": "Asesores"
+        },
+        "filterByFormula": "={asesor_id} = \"{{ $json.asesor_id_codigo }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2176,
+        3152
+      ],
+      "id": "04ad22d9-527e-4b4c-9e27-ed0b7bdcb41a",
+      "name": "Airtable · Buscar Asesor Región",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Payload final para upsert en base regional.\nconst R = $('Code · Resolver Destino Region').first().json;\nconst fields = Object.assign({}, R.payload);\n\nlet asesorRegId = null;\ntry {\n  const rows = $('Airtable · Buscar Asesor Región').all().map(i=>i.json).filter(r=>r && r.id);\n  if (rows.length) asesorRegId = rows[0].id;\n} catch(e) {}\nif (asesorRegId) fields.asesor_asignado = [asesorRegId];\n\nreturn [{ json: fields }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1952,
+        3152
+      ],
+      "id": "7c7f7dd0-6707-41cf-9ebf-a4fbae367893",
+      "name": "Code · Payload Final Región"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "={{ $('Code · Resolver Destino Region').first().json.base_id }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "id",
+          "cachedResultName": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1728,
+        3152
+      ],
+      "id": "7901bb33-f7e6-47f8-a83f-77336f14a0b3",
+      "name": "Airtable · Upsert Lead Región",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cr",
+              "leftValue": "={{ $('Code · Resolver Destino Region').first().json.cambio_region }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1504,
+        3056
+      ],
+      "id": "e1e415cb-2186-4642-a1c3-4c23c4d01430",
+      "name": "If · ¿Cambió de Región?"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "={{ $('Code · Resolver Destino Region').first().json.base_prev }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "id",
+          "cachedResultName": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id_canal": "={{ $('Code · Resolver Destino Region').first().json.user_id_canal }}",
+            "activo": false
+          },
+          "matchingColumns": [
+            "user_id_canal"
+          ],
+          "schema": [
+            {
+              "id": "user_id_canal",
+              "displayName": "user_id_canal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "activo",
+              "displayName": "activo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1280,
+        2976
+      ],
+      "id": "6df30b9d-cdea-4647-839c-f22dabee1382",
+      "name": "Airtable · Desactivar en Región Anterior",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=mirror:region:lead:{{ $('Code · Resolver Destino Region').first().json.user_id_canal }}",
+        "value": "={{ JSON.stringify({ h: String($('Code · Resolver Destino Region').first().json.hash), b: String($('Code · Resolver Destino Region').first().json.base_id) }) }}",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 2592000
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        3056
+      ],
+      "id": "dd02a7c4-b41d-40c0-a1c9-7073453d103f",
+      "name": "Redis · Save Region Mirror State",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "list",
+          "cachedResultName": "Citas"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('Code · Resolver Destino Region').first().json.user_id_canal }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1504,
+        3296
+      ],
+      "id": "4ee76e16-dfe8-451a-b829-2a8857c50430",
+      "name": "Airtable · Get Citas Lead",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Espejo de Citas a base regional.\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst R = $('Code · Resolver Destino Region').first().json;\n\nlet leadRegId=null;\ntry { const u=$('Airtable · Upsert Lead Región').first().json; if(u && u.id) leadRegId=u.id; } catch(e){}\n\nlet asesorRegId=null;\ntry {\n  const rows=$('Airtable · Buscar Asesor Región').all().map(i=>i.json).filter(r=>r&&r.id);\n  if(rows.length) asesorRegId=rows[0].id;\n} catch(e){}\n\nlet citas=[];\ntry { citas=$('Airtable · Get Citas Lead').all().map(i=>i.json).filter(r=>r&&r.id); } catch(e){}\n\nconst out=[];\nfor (const c of citas) {\n  const f=F(c);\n  if (!f.cita_id) continue;\n  const row = {\n    cita_id:              f.cita_id,\n    user_id_canal:        R.user_id_canal,\n    tipo_cita:            f.tipo_cita,\n    fecha_hora_inicio:    f.fecha_hora_inicio,\n    estado:               f.estado,\n    modelo_interes:       f.modelo_interes,\n    notas:                f.notas,\n    creada_en:            f.creada_en,\n    recordatorio_enviado: f.recordatorio_enviado,\n    sucursal:             R.sucursal_id,\n  };\n  if (leadRegId)   row.lead   = [leadRegId];\n  if (asesorRegId) row.asesor = [asesorRegId];\n\n  const limpio={};\n  for (const k of Object.keys(row)) {\n    const v=row[k];\n    if (v===undefined || v===null || v==='') continue;\n    limpio[k]=v;\n  }\n  out.push({ json: limpio });\n}\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        3296
+      ],
+      "id": "20e8b81f-f719-4dfd-b4ab-6da267306de8",
+      "name": "Code · Payload Citas Región"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "={{ $('Code · Resolver Destino Region').first().json.base_id }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfPtXQv8QrTrywc",
+          "mode": "id",
+          "cachedResultName": "Citas"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "cita_id"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1056,
+        3296
+      ],
+      "id": "ad884e74-11b0-4b20-8a77-780c324f07b2",
+      "name": "Airtable · Upsert Citas Región",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst R = $('Code · Resolver Destino Region').first().json;\nreturn [{ json: {\n  ok: true,\n  espejado_en: R.base_id,\n  sucursal_id: R.sucursal_id,\n  via: R.via,\n  asesor_espejado: !!R.asesor_id_codigo,\n  cambio_de_region: R.cambio_region,\n  user_id_canal: R.user_id_canal,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        3056
+      ],
+      "id": "1ba03396-9d29-43a6-9ef0-87d2c552ff19",
+      "name": "Code · Output"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id_canal": null,
+          "sucursal_id_hint": null,
+          "ciudad_hint": null
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis · Get Region Mirror State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Get Region Mirror State": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Lead": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Sucursales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Sucursales": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Asesores Maestro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Asesores Maestro": {
+      "main": [
+        [
+          {
+            "node": "Code · Resolver Destino Region",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Resolver Destino Region": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Espejar Región?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Espejar Región?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Buscar Asesor Región",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp · Sin Espejo Región",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Buscar Asesor Región": {
+      "main": [
+        [
+          {
+            "node": "Code · Payload Final Región",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Payload Final Región": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Upsert Lead Región",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Upsert Lead Región": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Cambió de Región?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Airtable · Get Citas Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Cambió de Región?": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Desactivar en Región Anterior",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis · Save Region Mirror State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Desactivar en Región Anterior": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Region Mirror State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Save Region Mirror State": {
+      "main": [
+        [
+          {
+            "node": "Code · Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Citas Lead": {
+      "main": [
+        [
+          {
+            "node": "Code · Payload Citas Región",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Payload Citas Región": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Upsert Citas Región",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "30997484-dbfd-4c0b-a68f-b46bc99b8854",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "CPlentnVnRZHVDXN",
+  "tags": []
+}

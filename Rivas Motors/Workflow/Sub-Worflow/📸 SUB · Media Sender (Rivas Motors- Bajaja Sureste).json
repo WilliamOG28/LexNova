@@ -1,0 +1,1254 @@
+{
+  "name": "📸 SUB · Media Sender (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "modelo"
+            },
+            {
+              "name": "conversation_id"
+            },
+            {
+              "name": "tipo"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1152,
+        1312
+      ],
+      "id": "764a50b7-3eb2-4405-8c06-e2d6af902523",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "imagenes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagenes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "ficha",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ficha"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "promo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "promo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "accesorios",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "accesorios"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -944,
+        528
+      ],
+      "id": "991caed7-0421-40cb-83db-548736bed711",
+      "name": "Switch · Tipo Asset"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDDVZuC2hVbFNo",
+          "mode": "list",
+          "cachedResultName": "Modelos",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblVDDVZuC2hVbFNo"
+        },
+        "filterByFormula": "={nombre} = \"{{ $('When Executed by Another Workflow').item.json.modelo }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -640,
+        352
+      ],
+      "id": "4daa25d2-0f26-44a2-bfc2-e6160141cce1",
+      "name": "Airtable · Get Model Images",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblCFOFmPSkOVI0zu",
+          "mode": "list",
+          "cachedResultName": "Promociones",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblCFOFmPSkOVI0zu"
+        },
+        "filterByFormula": "=AND({modelo_texto} = \"{{ $('When Executed by Another Workflow').item.json.modelo }}\", {activa})",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -640,
+        544
+      ],
+      "id": "15d5fe5b-2846-4b6d-9a2d-02b2ba0d06c3",
+      "name": "Airtable · Get Promo",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblHTusfymiQ1UpxN",
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblHTusfymiQ1UpxN"
+        },
+        "filterByFormula": "={clave} = \"rivas_motors\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -640,
+        736
+      ],
+      "id": "e8749cd0-4fc1-41d3-9978-3d97ca69ac7b",
+      "name": "Airtable · Get Config",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst t = $('When Executed by Another Workflow').first().json;\nconst tipo = (t.tipo || 'imagenes');\nconst conv = t.conversation_id;\nconst modelo = t.modelo || '';\n\nlet atts = [];\nlet link = '';\ntry {\n  if (tipo === 'imagenes') {\n    const r = F($('Airtable · Get Model Images').first().json);\n    atts = r.kit_imagenes || [];\n  } else if (tipo === 'ficha') {\n    const r = F($('Airtable · Get Model Images').first().json);\n    atts = r.ficha_tecnica_pdf || [];\n  } else if (tipo === 'promo') {\n    const r = F($('Airtable · Get Promo').first().json);\n    atts = (r.imagen && r.imagen.length ? r.imagen : (r.pdf || []));\n  } else if (tipo === 'accesorios') {\n    const r = F($('Airtable · Get Config').first().json);\n    atts = r.accesorios_pdf || [];\n    link = r.accesorios_link || '';\n  }\n} catch (e) {}\n\nconst imgs = (Array.isArray(atts) ? atts : []).filter(a => a && a.url);\n\n// Sin attachments: NUNCA decir al cliente que no hay material.\nif (imgs.length === 0) {\n  const msg = link\n    ? ('Comparte este enlace con el cliente de forma natural (sin decir que no tienes otra cosa): ' + link)\n    : 'No había material para enviar. Continúa la conversación con normalidad (describe el modelo, avanza o agenda). NO le digas al cliente que no tienes fotos, ficha ni material.';\n  return [{ json: { sin_assets: true, ok: !!link, conversation_id: conv, modelo, tipo, link: link || '', mensaje_agente: msg } }];\n}\n\nreturn imgs.map((a, i) => ({ json: {\n  sin_assets: false,\n  url: a.url,\n  filename: a.filename || (modelo + '_' + tipo + '_' + (i+1) + (tipo==='imagenes' ? '.jpg' : '.pdf')),\n  conversation_id: conv, modelo, tipo, link: link || '',\n  idx: i+1, total: imgs.length\n}}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        528
+      ],
+      "id": "68aadbf2-df50-4fe8-b44e-ba79bb5f2e60",
+      "name": "Code · Extract Assets"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has",
+              "leftValue": "={{ $json.sin_assets }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        544
+      ],
+      "id": "4d277002-4d5b-4f29-8e66-17a0daffd244",
+      "name": "If · Tiene Attachment?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        448
+      ],
+      "id": "0b3db5cf-e8cf-4497-ad3b-d46725a74dba",
+      "name": "HTTP · Download Asset",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').first().json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "attachments[]",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "message_type",
+              "value": "outgoing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        448
+      ],
+      "id": "f8405b6c-9dd7-4704-9b69-3ddcbc86065e",
+      "name": "HTTP · Send Asset to Chatwoot",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok-1",
+              "name": "ok",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "ok-2",
+              "name": "mensaje_agente",
+              "value": "=Material enviado al cliente.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        448
+      ],
+      "id": "ab46d3b5-559b-463b-bbe2-bf75e3317586",
+      "name": "Set · Respuesta OK"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "no-1",
+              "name": "ok",
+              "value": "={{ $json.ok }}",
+              "type": "boolean"
+            },
+            {
+              "id": "no-2",
+              "name": "mensaje_agente",
+              "value": "={{ $json.mensaje_agente }}",
+              "type": "string"
+            },
+            {
+              "id": "no-3",
+              "name": "link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        80,
+        672
+      ],
+      "id": "77a9e9f7-f379-42aa-b0d1-01939667fd9f",
+      "name": "Set · Respuesta Directa"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnzq7bM3Dh84R7U",
+          "mode": "list",
+          "cachedResultName": "Financieras",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblnzq7bM3Dh84R7U"
+        },
+        "filterByFormula": "=AND({activa}, LOWER({nombre}) = LOWER(\"{{ $('When Executed by Another Workflow').item.json.nombre }}\"))",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        1632
+      ],
+      "id": "3866d176-bc4e-4a91-8ec7-b99a0e805534",
+      "name": "Airtable · Get Financiera Flyer",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "imagenes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagenes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "ficha",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ficha"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "promo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "promo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "accesorios",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "accesorios"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo || 'imagenes' }}",
+                    "rightValue": "financiera",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "financiera"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -912,
+        1232
+      ],
+      "id": "c93006e8-2efb-4658-95c3-3f0db1195f34",
+      "name": "Switch · Tipo Asset1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblVDDVZuC2hVbFNo",
+          "mode": "list",
+          "cachedResultName": "Modelos",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblVDDVZuC2hVbFNo"
+        },
+        "filterByFormula": "={nombre} = \"{{ $('When Executed by Another Workflow').item.json.modelo }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        1056
+      ],
+      "id": "36ef8587-b003-4015-a44b-a052b8642fa5",
+      "name": "Airtable · Get Model Images1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblCFOFmPSkOVI0zu",
+          "mode": "list",
+          "cachedResultName": "Promociones",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblCFOFmPSkOVI0zu"
+        },
+        "filterByFormula": "=AND({modelo_texto} = \"{{ $('When Executed by Another Workflow').item.json.modelo }}\", {activa})",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        1248
+      ],
+      "id": "3ecaf803-75d0-4204-8fa2-94925c075350",
+      "name": "Airtable · Get Promo1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblHTusfymiQ1UpxN",
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblHTusfymiQ1UpxN"
+        },
+        "filterByFormula": "={clave} = \"rivas_motors\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        1440
+      ],
+      "id": "912ad08b-dd3b-4ee1-8dfa-327df6117b70",
+      "name": "Airtable · Get Config1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst t = $('When Executed by Another Workflow').first().json;\nconst tipo = (t.tipo || 'imagenes');\nconst conv = t.conversation_id;\nconst modelo = t.modelo || '';\nconst nombre = t.nombre || '';\n\nlet atts = [];\nlet link = '';\nlet entidad = modelo; // por defecto, la entidad es el modelo\ntry {\n  if (tipo === 'imagenes') {\n    const r = F($('Airtable · Get Model Images1').first().json);\n    atts = r.kit_imagenes || [];\n  } else if (tipo === 'ficha') {\n    const r = F($('Airtable · Get Model Images1').first().json);\n    atts = r.ficha_tecnica_pdf || [];\n  } else if (tipo === 'promo') {\n    const r = F($('Airtable · Get Promo1').first().json);\n    atts = (r.imagen && r.imagen.length ? r.imagen : (r.pdf || []));\n  } else if (tipo === 'accesorios') {\n    const r = F($('Airtable · Get Config1').first().json);\n    atts = r.accesorios_pdf || [];\n    link = r.accesorios_link || '';\n  } else if (tipo === 'financiera') {\n    const r = F($('Airtable · Get Financiera Flyer').first().json);\n    atts = r.flyer || [];\n    entidad = r.nombre || nombre;\n  }\n} catch (e) {}\n\nconst imgs = (Array.isArray(atts) ? atts : []).filter(a => a && a.url);\n\n// Sin attachments: NUNCA decir al cliente que no hay material.\nif (imgs.length === 0) {\n  const msg = link\n    ? ('Comparte este enlace con el cliente de forma natural (sin decir que no tienes otra cosa): ' + link)\n    : 'No había material para enviar. Continúa la conversación con normalidad (describe el modelo, avanza o agenda). NO le digas al cliente que no tienes fotos, ficha, flyer ni material.';\n  return [{ json: { sin_assets: true, ok: !!link, conversation_id: conv, modelo, nombre, tipo, link: link || '', mensaje_agente: msg } }];\n}\n\nreturn imgs.map((a, i) => ({ json: {\n  sin_assets: false,\n  url: a.url,\n  filename: a.filename || (entidad + '_' + tipo + '_' + (i+1) + (tipo==='imagenes' || tipo==='financiera' || tipo==='promo' ? '.jpg' : '.pdf')),\n  conversation_id: conv, modelo, nombre, tipo, link: link || '',\n  idx: i+1, total: imgs.length\n}}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        1232
+      ],
+      "id": "ebebc93b-7da8-451a-80a4-36b91d83b3f2",
+      "name": "Code · Extract Assets1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has",
+              "leftValue": "={{ $json.sin_assets }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        1248
+      ],
+      "id": "2e76fb42-6b99-4656-90c9-1f67de8134eb",
+      "name": "If · Tiene Attachment?1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        1152
+      ],
+      "id": "d789dfdf-de04-419f-814a-f06676590a6c",
+      "name": "HTTP · Download Asset1",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cwrivasmotors.lexnova.cloud/api/v1/accounts/1/conversations/{{ $('When Executed by Another Workflow').first().json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "api_access_token",
+              "value": "T5h1c6Ue5HqC4wapzfQBBjmU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "attachments[]",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "message_type",
+              "value": "outgoing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        1152
+      ],
+      "id": "6840b743-2920-493e-910a-7d9a50bb8878",
+      "name": "HTTP · Send Asset to Chatwoot1",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFE3NM48zAie98YU",
+          "name": "Authorization Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok-1",
+              "name": "ok",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "ok-2",
+              "name": "mensaje_agente",
+              "value": "=Material enviado al cliente.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        1152
+      ],
+      "id": "102975c6-6361-48ce-a360-5b85a389e171",
+      "name": "Set · Respuesta OK1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "no-1",
+              "name": "ok",
+              "value": "={{ $json.ok }}",
+              "type": "boolean"
+            },
+            {
+              "id": "no-2",
+              "name": "mensaje_agente",
+              "value": "={{ $json.mensaje_agente }}",
+              "type": "string"
+            },
+            {
+              "id": "no-3",
+              "name": "link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        1376
+      ],
+      "id": "07ba895d-bea2-4326-98ff-601f6187a439",
+      "name": "Set · Respuesta Directa1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch · Tipo Asset1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch · Tipo Asset": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Model Images",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Model Images",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Promo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Model Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Model Images": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Promo": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Config": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Extract Assets": {
+      "main": [
+        [
+          {
+            "node": "If · Tiene Attachment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Tiene Attachment?": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Download Asset",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set · Respuesta Directa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Download Asset": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Send Asset to Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Send Asset to Chatwoot": {
+      "main": [
+        [
+          {
+            "node": "Set · Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Financiera Flyer": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch · Tipo Asset1": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Model Images1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Model Images1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Promo1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Config1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Financiera Flyer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Model Images1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Model Images1": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Promo1": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Config1": {
+      "main": [
+        [
+          {
+            "node": "Code · Extract Assets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Extract Assets1": {
+      "main": [
+        [
+          {
+            "node": "If · Tiene Attachment?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Tiene Attachment?1": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Download Asset1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set · Respuesta Directa1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Download Asset1": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Send Asset to Chatwoot1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Send Asset to Chatwoot1": {
+      "main": [
+        [
+          {
+            "node": "Set · Respuesta OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ba5362d5-9bb4-4952-8571-1c55b327f015",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "stpHXHqtu61CIrx3",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

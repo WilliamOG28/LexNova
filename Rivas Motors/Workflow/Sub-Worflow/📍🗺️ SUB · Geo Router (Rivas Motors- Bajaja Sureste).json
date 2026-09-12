@@ -1,0 +1,433 @@
+{
+  "name": "📍🗺️ SUB · Geo Router (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message_text"
+            },
+            {
+              "name": "user_id_canal"
+            },
+            {
+              "name": "ciudad_lead"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -144,
+        704
+      ],
+      "id": "e8ff7e69-1404-4c59-b987-fff48833eae8",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblHTusfymiQ1UpxN",
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblHTusfymiQ1UpxN"
+        },
+        "filterByFormula": "={clave} = \"rivas_motors\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        304,
+        704
+      ],
+      "id": "dbe6df61-1130-4bf0-b5a3-00e22bea7892",
+      "name": "Airtable · Get Config",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl92B5KJskwxUM1b",
+          "mode": "list",
+          "cachedResultName": "Sucursales",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tbl92B5KJskwxUM1b"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        528,
+        704
+      ],
+      "id": "638adda3-b473-435d-8b55-deef4e29bdc8",
+      "name": "Airtable · Get All Branches",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nconst trig = $('When Executed by Another Workflow').first().json;\nconst cfg  = F($('Airtable · Get Config').first().json);\nconst branches = $('Airtable · Get All Branches').all().map(i=>F(i.json)).filter(b=>b.sucursal_id);\n\nfunction norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\nfunction coberturaList(b){ return norm(b.cobertura_colonias).split(',').map(x=>x.trim()).filter(Boolean); }\n\n// ciudad_lead: la manda el MAIN, o si no la leemos del CRM.\n// El MAIN corre este sub EN PARALELO con el Hydrator, asi que no puede\n// pasarnosla; por eso el sub se la busca solo. Sin esto el geo redetecta\n// desde cero en cada turno y el lead \"pierde\" su ciudad entre mensajes.\nlet ciudadCRM = '', coloniaCRM = '';\ntry {\n  const r = $('Airtable · Get Lead Ciudad').all().map(i=>i.json).filter(x=>x && x.id)[0];\n  if (r) { const f = F(r); ciudadCRM = f.ciudad || ''; coloniaCRM = f.colonia || ''; }\n} catch(e) {}\n\nconst ciudadLead = norm(trig.ciudad_lead || ciudadCRM || coloniaCRM);\nconst msg = norm(trig.message_text);\n\nlet detectedCity=null, confianza='baja', via='ninguna';\nif (ciudadLead){ const h=branches.find(b=>norm(b.ciudad)===ciudadLead); if(h){detectedCity=norm(h.ciudad);confianza='alta';via='ciudad_lead';} }\nif (!detectedCity && ciudadLead){ const h=branches.find(b=>coberturaList(b).includes(ciudadLead)); if(h){detectedCity=norm(h.ciudad);confianza='alta';via='cobertura_lead';} }\nif (!detectedCity && msg){ const h=branches.find(b=>b.ciudad && msg.includes(norm(b.ciudad))); if(h){detectedCity=norm(h.ciudad);confianza='media';via='texto_ciudad';} }\nif (!detectedCity && msg){ const h=branches.find(b=>coberturaList(b).some(col=>col && msg.includes(col))); if(h){detectedCity=norm(h.ciudad);confianza='media';via='texto_colonia';} }\n\nfunction pack(b){ return { sucursal_id:b.sucursal_id||'', sucursal_nombre:b.nombre||'', ciudad:b.ciudad||'', direccion:b.direccion||'', google_maps:b.google_maps||'', horario:b.horario||'', whatsapp:b.whatsapp_publico||'', telefono:b.telefono||'', gerente_nombre:b.gerente_nombre||'' }; }\nconst todas = branches.map(pack);\nlet sucursales_ciudad = detectedCity ? branches.filter(b=>norm(b.ciudad)===detectedCity).map(pack) : [];\nconst ciudades_cobertura = [...new Set(branches.map(b=>b.ciudad).filter(Boolean))];\n\n// ¿Vale la pena preguntar al LLM? Solo si el código NO detectó ciudad y el mensaje trae\n// tokens que no son puro saludo/relleno (posible nombre de lugar). Evita LLM en \"Hola\".\nconst FILLER = new Set(['hola','ola','holi','buenas','buenos','dias','tardes','noches','buen','dia','que','tal','hey','hello','saludos','onda','quiubo','info','informacion','informes','precio','precios','costo','cuesta','moto','motos','motocicleta','credito','financiamiento','contado','si','sii','no','ok','oki','va','vale','sale','claro','gracias','porfa','favor','quiero','una','un','el','la','los','las','de','en','me','interesa','ver','saber','pulsar','boxer','dominar','avenger','platina','ns200','ns160','ns125','n160','n250','rs200','ns400z']);\nconst tokens = msg.split(/[^a-z0-9]+/).filter(Boolean);\nconst nonFiller = tokens.filter(t=>!FILLER.has(t) && t.length>=3);\nconst needs_llm = !detectedCity && nonFiller.length>0;\n\nreturn [{ json: {\n  _cfg: cfg, _todas: todas, _sucursales_ciudad: sucursales_ciudad, _ciudades_cobertura: ciudades_cobertura,\n  detectedCity, confianza, via, needs_llm, msg_raw: trig.message_text || '',\n  _ciudad_crm: ciudadCRM, _colonia_crm: coloniaCRM\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        704
+      ],
+      "id": "a4a1a43a-e36e-48bd-906b-0fb4bcd8c1fd",
+      "name": "Code · Geo Match (capa código)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "needllm",
+              "leftValue": "={{ $json.needs_llm }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        704
+      ],
+      "id": "eeb6279e-737f-4a26-abfa-6071912cfcb1",
+      "name": "If · ¿Usar LLM?"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1216,
+        800
+      ],
+      "id": "057c9179-5569-487a-9a07-c72e20d4af40",
+      "name": "OpenAI · Geo Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "f0DVpwXvrUJXlheM",
+          "name": "Open AI Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"estado\": { \"type\": \"string\", \"enum\": [\"cubierta\",\"fuera_cobertura\",\"desconocida\"] },\n    \"ciudad_detectada\": { \"type\": [\"string\",\"null\"] }\n  },\n  \"required\": [\"estado\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        800
+      ],
+      "id": "270472be-0ca0-4094-8970-8b255d91f62e",
+      "name": "Parser · Geo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Mensaje del cliente:\n\"\"\"\n{{ $('Code · Geo Match (capa código)').first().json.msg_raw }}\n\"\"\"",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Eres un clasificador de UBICACIÓN para una agencia de motos con sucursales en estas ciudades de cobertura: {{ ($('Code · Geo Match (capa código)').first().json._ciudades_cobertura || []).join(', ') }}.\nDado el mensaje del cliente, determina si menciona una ubicación y clasifícala. Responde SOLO el JSON pedido.\nReglas:\n1) Si menciona una ciudad/municipio/colonia que corresponde a UNA de las ciudades de cobertura de la lista, estado='cubierta' y ciudad_detectada = el nombre EXACTO de esa ciudad de cobertura (tal cual la lista).\n2) Si menciona una localidad de México que NO está en la lista de cobertura, estado='fuera_cobertura' y ciudad_detectada = la localidad que dijo.\n3) Si NO menciona ninguna ubicación, estado='desconocida' y ciudad_detectada=null.\nNunca inventes ciudades de cobertura que no estén en la lista. No infieras ubicación por el nombre de la persona ni por el modelo de moto."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1200,
+        576
+      ],
+      "id": "778467b3-9c3b-4bf1-8cae-33d380809ab0",
+      "name": "LLM · Resolver Ciudad"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst g = $('Code · Geo Match (capa código)').first().json;\nconst cfg = g._cfg || {};\nconst todas = g._todas || [];\nlet sucursales_ciudad = g._sucursales_ciudad || [];\nlet detectedCity = g.detectedCity || null;\nlet confianza = g.confianza || 'baja';\nlet via = g.via || 'ninguna';\nlet ciudad_desconocida, fuera_cobertura;\n\n// ¿Corrió el LLM?\nlet llm=null;\ntry { llm = $('LLM · Resolver Ciudad').first().json.output || $('LLM · Resolver Ciudad').first().json; } catch(e) {}\n\nfunction norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nif (llm && llm.estado) {\n  if (llm.estado === 'cubierta' && llm.ciudad_detectada) {\n    const c = norm(llm.ciudad_detectada);\n    const hit = todas.filter(b => norm(b.ciudad) === c);\n    if (hit.length) { detectedCity = c; sucursales_ciudad = hit; confianza='media'; via='llm_cubierta'; }\n  } else if (llm.estado === 'fuera_cobertura') {\n    detectedCity = llm.ciudad_detectada ? norm(llm.ciudad_detectada) : null;\n    via='llm_fuera'; confianza='media';\n  } else {\n    via='llm_desconocida';\n  }\n}\n\n// Estados finales\nif (sucursales_ciudad.length > 0) { ciudad_desconocida=false; fuera_cobertura=false; }\nelse if (llm && llm.estado==='fuera_cobertura') { ciudad_desconocida=false; fuera_cobertura=true; }\nelse { ciudad_desconocida=true; fuera_cobertura=false; }\n\nconst lista = (sucursales_ciudad.length>0) ? sucursales_ciudad : todas;\nconst multiple = lista.length>1;\nconst tipo_cita_sugerido = fuera_cobertura ? 'Videollamada' : 'Visita a sucursal';\n\nreturn [{ json: {\n  negocio_nombre: cfg.nombre_negocio || 'Rivas Motors',\n  agente_nombre: cfg.agente_nombre || 'Asesor de venta Bajaj',\n  horario_humano: cfg.horario_humano || '',\n  horario_agente: cfg.horario_agente || '24/7',\n  metodos_pago: cfg.metodos_pago || '',\n  politica_envio: cfg.politica_envio || '',\n  detected_city: detectedCity || null,\n  ciudad_desconocida: ciudad_desconocida,\n  fuera_cobertura: fuera_cobertura,\n  geo_confianza: confianza,\n  geo_via: via,\n  multiple_sucursales: multiple,\n  num_sucursales: lista.length,\n  sucursales_ciudad: lista,\n  tipo_cita_sugerido: tipo_cita_sugerido\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        704
+      ],
+      "id": "047b85c3-33e1-4067-b792-a368a5af6a13",
+      "name": "Code · Build Output"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcvSBRV0dxGYIOq",
+          "mode": "list",
+          "cachedResultName": "Leads"
+        },
+        "filterByFormula": "={user_id_canal} = \"{{ $('When Executed by Another Workflow').item.json.user_id_canal }}\"",
+        "options": {
+          "fields": [
+            "user_id_canal",
+            "ciudad",
+            "colonia"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        704
+      ],
+      "id": "ad8901f1-32d6-45bb-8b6a-c04d9147c6a6",
+      "name": "Airtable · Get Lead Ciudad",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Lead Ciudad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Config": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get All Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Geo Match (capa código)": {
+      "main": [
+        [
+          {
+            "node": "If · ¿Usar LLM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · ¿Usar LLM?": {
+      "main": [
+        [
+          {
+            "node": "LLM · Resolver Ciudad",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code · Build Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM · Resolver Ciudad": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · Geo Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM · Resolver Ciudad",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser · Geo": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LLM · Resolver Ciudad",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get All Branches": {
+      "main": [
+        [
+          {
+            "node": "Code · Geo Match (capa código)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Lead Ciudad": {
+      "main": [
+        [
+          {
+            "node": "Airtable · Get Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "eeaa6344-9ff7-4cfd-8aaa-dd7ea6dd1d27",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "rDRJ8VP7p1H0ziRv",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    }
+  ]
+}

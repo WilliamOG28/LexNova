@@ -1,0 +1,282 @@
+{
+  "name": "🎟️ SUB · Promos Vigentes (Rivas Motors- Bajaja Sureste)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id_canal"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -816,
+        272
+      ],
+      "id": "883f321f-b259-4d27-8638-92de96cc1629",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "promos_cache",
+        "key": "promos:__vigentes__",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        272
+      ],
+      "id": "aea0f2fa-f0ec-4153-bc5f-594d7bbbd62e",
+      "name": "Redis · Get Promos Cache",
+      "alwaysOutputData": true,
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "promohit",
+              "leftValue": "={{ $json.promos_cache }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        272
+      ],
+      "id": "f2215598-688c-4eb6-9ac3-7b4f6cbcf493",
+      "name": "If · Cache Hit?"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst c = $json.promos_cache;\ntry{\n  const p = typeof c==='string' ? JSON.parse(c) : c;\n  return [{ json: { ...p, _from_cache:true } }];\n}catch(e){\n  return [{ json: { ok:false, hay_promos:false, mencion_saludo:'', promos:[], _from_cache:false, _parse_error:e.message } }];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        112
+      ],
+      "id": "ba06b224-887f-4649-adf4-09e293eb4ae2",
+      "name": "Code · Parse Cache"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appewLs3fitR24BAp",
+          "mode": "list",
+          "cachedResultName": "CRM Rivas Motors",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblCFOFmPSkOVI0zu",
+          "mode": "list",
+          "cachedResultName": "Promociones",
+          "cachedResultUrl": "https://airtable.com/appewLs3fitR24BAp/tblCFOFmPSkOVI0zu"
+        },
+        "filterByFormula": "={activa} = TRUE()",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        432
+      ],
+      "id": "c16cbc0f-d0dd-4eca-85d9-d6d9b16e81e6",
+      "name": "Airtable · Get Promos Activas",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "5EjaJfbZjRVNmZ7S",
+          "name": "Airtable CRM Rivas Motors Bajaj Sureste"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Lectura defensiva (.fields anidado o plano)\nfunction F(r){ return (r && r.fields && typeof r.fields==='object') ? r.fields : (r||{}); }\nfunction toDate(s){ if(!s) return null; const d=new Date(String(s).length<=10 ? (s+'T00:00:00-06:00') : s); return isNaN(d)?null:d; }\n\n// Hoy a medianoche MX (-06:00)\nconst nowMX = new Date(Date.now() - 6*3600000);\nconst hoy = new Date(Date.UTC(nowMX.getUTCFullYear(), nowMX.getUTCMonth(), nowMX.getUTCDate()));\n\nlet rows=[]; try{ rows = $('Airtable · Get Promos Activas').all().map(i=>i.json).filter(r=>r && r.id); }catch(e){}\n\nconst MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];\nfunction ddmmm(d){ return d ? (d.getUTCDate()+' '+MESES[d.getUTCMonth()]) : ''; }\n\nconst vig = rows.map(r=>{\n  const f=F(r);\n  const ini=toDate(f.fecha_inicio), fin=toDate(f.fecha_fin);\n  const started = !ini || ini.getTime() <= hoy.getTime();\n  const notEnded = !fin || fin.getTime() >= hoy.getTime();\n  return {f, ini, fin, vigente:(f.activa===true && started && notEnded)};\n}).filter(x=>x.vigente);\n\nvig.sort((a,b)=> (Number(b.f.prioridad||0)-Number(a.f.prioridad||0)) || ((a.fin?a.fin.getTime():9e15)-(b.fin?b.fin.getTime():9e15)) );\n\nconst promos = vig.map(x=>{\n  const f=x.f;\n  return {\n    campania: f.campania || 'Promoción',\n    modelo_texto: f.modelo_texto || '',\n    bono: (f.bono===''||f.bono==null)?null:Number(f.bono),\n    precio_con_descuento: (f.precio_con_descuento===''||f.precio_con_descuento==null)?null:Number(f.precio_con_descuento),\n    mostrar_precio_al_cliente: f.mostrar_precio_al_cliente===true,\n    fecha_fin: f.fecha_fin || null,\n    fecha_fin_txt: ddmmm(x.fin),\n    descripcion: f.descripcion || ''\n  };\n});\n\nconst hay = promos.length>0;\nconst principal = hay ? promos[0].campania : null;\nconst finPrincipal = hay ? promos[0].fecha_fin_txt : null;\nconst modelos_en_promo = [...new Set(promos.map(p=>p.modelo_texto).filter(Boolean))];\n\n// Mención para el saludo: SIEMPRE cualitativa, sin precios.\nlet mencion_saludo = '';\nif(hay){\n  mencion_saludo = `Estamos en plena ${principal}` + (finPrincipal?` (hasta el ${finPrincipal})`:'') +\n    `, con bonos y descuentos de temporada en varios modelos` +\n    (modelos_en_promo.length?` como ${modelos_en_promo.slice(0,3).join(', ')}`:'') + `.`;\n}\n\nreturn [{ json: {\n  ok: true,\n  hay_promos: hay,\n  campania_principal: principal,\n  fecha_fin_principal: finPrincipal,\n  mencion_saludo,\n  modelos_en_promo,\n  promos,\n  _diag: { filas_activas_leidas: rows.length, vigentes_hoy: promos.length },\n  _from_cache: false\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        432
+      ],
+      "id": "cf9459f2-7aba-4ee5-ab28-d11b8b3aae39",
+      "name": "Code · Build Promos Vigentes"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "promos:__vigentes__",
+        "value": "={{ JSON.stringify($json) }}",
+        "expire": true,
+        "ttl": 600
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        304,
+        432
+      ],
+      "id": "7930c6b9-7863-4841-9249-6c67fdad1424",
+      "name": "Redis · Save Promos Cache",
+      "credentials": {
+        "redis": {
+          "id": "LPQPvebdUuR8c5ge",
+          "name": "Redis Rivas Motors Bajaj Sureste"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis · Get Promos Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis · Get Promos Cache": {
+      "main": [
+        [
+          {
+            "node": "If · Cache Hit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If · Cache Hit?": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable · Get Promos Activas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable · Get Promos Activas": {
+      "main": [
+        [
+          {
+            "node": "Code · Build Promos Vigentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Build Promos Vigentes": {
+      "main": [
+        [
+          {
+            "node": "Redis · Save Promos Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A4QD9B2JE2Bb72nh",
+    "timezone": "America/Mexico_City",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "7a9166b4-1790-4206-823a-f25870a0ea73",
+  "meta": {
+    "instanceId": "935bf2ef7fea628101839cf1166fff3e3b02547bd04568985588ce7ce304e5ff"
+  },
+  "nodeGroups": [],
+  "id": "RPHS2Bg0g0atwaGy",
+  "tags": [
+    {
+      "updatedAt": "2026-06-24T15:51:12.929Z",
+      "createdAt": "2026-06-24T15:51:12.929Z",
+      "id": "iPKjNuS5plSZyzO7",
+      "name": "Bajaj Sureste"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:17.602Z",
+      "createdAt": "2026-06-24T15:51:17.602Z",
+      "id": "RaIhL8gTEHNFUODH",
+      "name": "Desarrollo"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:21.927Z",
+      "createdAt": "2026-06-24T15:51:21.927Z",
+      "id": "JYdlm1JwDCEBRRcj",
+      "name": "LexPro"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:29.513Z",
+      "createdAt": "2026-06-24T15:51:29.513Z",
+      "id": "y466CY4DuG0EUXm4",
+      "name": "SW"
+    },
+    {
+      "updatedAt": "2026-06-24T15:51:08.293Z",
+      "createdAt": "2026-06-24T15:51:08.293Z",
+      "id": "a0LkE5UdHjB63mme",
+      "name": "Rivas Motors"
+    }
+  ]
+}
