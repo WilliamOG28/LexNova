@@ -8,6 +8,7 @@ Este directorio documenta el sistema de automatización conversacional (chatbot 
 2. [02-Workflow-MAIN.md](02-Workflow-MAIN.md) — Desglose fase por fase del orquestador principal (`🔶 MAIN · Rivas Motors`), con diagramas de flujo.
 3. [03-Catalogo-Subworkflows.md](03-Catalogo-Subworkflows.md) — Catálogo de los 22 sub-workflows: propósito, trigger, inputs/outputs, dependencias.
 4. [04-Diagramas-UML.md](04-Diagramas-UML.md) — Diagramas UML consolidados: componentes, secuencia (casos clave), estados del lead, y "clase" de las entidades principales.
+5. [05-Diagrama-Archify-Arquitectura.html](05-Diagrama-Archify-Arquitectura.html) — Diagrama de arquitectura interactivo (HTML standalone, generado con el skill `archify`): abrir en el navegador para pan/zoom, tema claro/oscuro y trazado de relaciones. Es una vista simplificada (agrupada por dominio) del mismo sistema que detalla el archivo 01; para el detalle nodo-por-nodo, usar los `.md`.
 
 ## Cómo se generó esta documentación
 
