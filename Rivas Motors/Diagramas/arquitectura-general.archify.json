@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Rivas Motors / Bajaj Sureste — Automatización n8n",
+    "output": "arquitectura-general.html",
+    "quality_profile": "showcase",
+    "visual_preset": "signal-flow",
+    "viewBox": [1200, 620]
+  },
+  "components": [
+    { "id": "whatsapp", "type": "external", "label": "WhatsApp", "sublabel": "Meta Cloud API", "pos": [40, 40], "size": [150, 60] },
+    { "id": "chatwoot", "type": "external", "label": "Chatwoot", "sublabel": "Inbox por marca", "pos": [230, 40], "size": [160, 60] },
+    { "id": "monday", "type": "external", "label": "Monday.com", "sublabel": "Tablero inventario", "pos": [760, 40], "size": [150, 60] },
+    { "id": "financiera_ext", "type": "external", "label": "Bot Financiera", "sublabel": "Socio de crédito", "pos": [960, 40], "size": [170, 60] },
+
+    { "id": "main", "type": "backend", "label": "🔶 MAIN (n8n)", "sublabel": "Router LLM + Agent Comercial", "pos": [250, 190], "size": [320, 70] },
+    { "id": "automations", "type": "backend", "label": "Cron & Webhooks", "sublabel": "Nurturing · Recordatorios · Sync", "pos": [760, 190], "size": [200, 60] },
+
+    { "id": "dominio_atencion", "type": "backend", "label": "Subworkflows de Atención", "sublabel": "Inventario · FAQ · Agenda · Handoff", "pos": [40, 340], "size": [240, 60] },
+    { "id": "dominio_postproceso", "type": "backend", "label": "Subworkflows de Post-proceso", "sublabel": "Lead Scorer · CRM Mirrors", "pos": [330, 340], "size": [250, 60] },
+    { "id": "financiera_in", "type": "backend", "label": "🏦 Financiera Inbound", "pos": [980, 340], "size": [180, 60] },
+
+    { "id": "airtable", "type": "database", "label": "Airtable", "sublabel": "CRM maestro + espejos", "pos": [40, 480], "size": [170, 60] },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "Cache · Buffer · Locks", "pos": [250, 480], "size": [150, 60] },
+    { "id": "slack", "type": "external", "label": "Slack", "sublabel": "Notificaciones", "pos": [440, 480], "size": [140, 60] },
+    { "id": "openai", "type": "cloud", "label": "OpenAI", "sublabel": "GPT-5.4-mini + Whisper", "pos": [640, 480], "size": [160, 60] },
+    { "id": "postgres", "type": "database", "label": "Postgres", "sublabel": "Memoria conversacional", "pos": [840, 480], "size": [160, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Dominio", "wraps": ["dominio_atencion", "dominio_postproceso", "financiera_in"] },
+    { "kind": "region", "label": "Infraestructura", "wraps": ["airtable", "redis", "slack", "openai", "postgres"] }
+  ],
+  "connections": [
+    { "id": "wa-cw", "from": "whatsapp", "to": "chatwoot", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "cw-main", "from": "chatwoot", "to": "main", "label": "webhook", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" },
+    { "id": "monday-auto", "from": "monday", "to": "automations", "fromSide": "bottom", "toSide": "top" },
+    { "id": "auto-cw", "from": "automations", "to": "chatwoot", "variant": "dashed", "fromSide": "top", "toSide": "right" },
+    { "id": "fin-ext-in", "from": "financiera_ext", "to": "financiera_in", "fromSide": "bottom", "toSide": "top" },
+    { "id": "main-fin-in", "from": "main", "to": "financiera_in", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "main-atencion", "from": "main", "to": "dominio_atencion", "label": "tools del agente", "fromSide": "bottom", "toSide": "top" },
+    { "id": "main-postproceso", "from": "main", "to": "dominio_postproceso", "fromSide": "bottom", "toSide": "top" },
+    { "id": "main-openai", "from": "main", "to": "openai", "fromSide": "bottom", "toSide": "top" },
+    { "id": "main-postgres", "from": "main", "to": "postgres", "fromSide": "bottom", "toSide": "top" },
+    { "id": "atencion-airtable", "from": "dominio_atencion", "to": "airtable", "fromSide": "bottom", "toSide": "top" },
+    { "id": "atencion-redis", "from": "dominio_atencion", "to": "redis", "fromSide": "bottom", "toSide": "top" },
+    { "id": "postproceso-slack", "from": "dominio_postproceso", "to": "slack", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Aplicación", "items": ["MAIN orquesta dedupe, buffer/debounce, router de intención y el Agent Comercial", "Duplicado 1:1 por canal (Rivas Motors / Bajaj Sureste) dentro del mismo workflow"] },
+    { "dot": "emerald", "title": "Dominio (26 workflows en total: 1 MAIN + 25 sub-workflows)", "items": ["Subworkflows de negocio puro, invocados por MAIN o como tools del agente", "Financiera Inbound conecta al socio de crédito, escribe en Airtable y dispara Human Handoff al aprobar (relaciones omitidas del diagrama por claridad)"] },
+    { "dot": "amber", "title": "Infraestructura", "items": ["Airtable es el CRM maestro con bases espejo por sucursal/región", "Redis cachea leads/inventario/promos y coordina locks de round-robin"] }
+  ]
+}

@@ -17,8 +17,10 @@ Rivas Motors/
 │   └── Sub-Worflow/                        # 25 sub-workflows invocados por MAIN o entre sí
 ├── Documentacion/
 │   ├── 00-README.md                        # Índice general + arquitectura resumida
-│   ├── workflows/                          # Un .md por cada uno de los 26 workflows (MAIN + 25 subs)
-│   └── 05-Diagrama-Archify-Arquitectura.html  # Diagrama de arquitectura interactivo (skill archify)
+│   └── workflows/                          # Un .md por cada uno de los 26 workflows (MAIN + 25 subs)
+├── Diagramas/
+│   ├── arquitectura-general.html           # Diagrama de arquitectura interactivo (skill archify)
+│   └── arquitectura-general.archify.json   # Especificación fuente editable del diagrama
 ├── Plan de trabajo/
 └── Reportes/
 ```

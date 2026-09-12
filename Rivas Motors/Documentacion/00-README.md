@@ -82,7 +82,7 @@ Las convenciones completas de esta documentación (y cómo mantenerla) están en
 
 ## Vista de arquitectura complementaria
 
-[05-Diagrama-Archify-Arquitectura.html](05-Diagrama-Archify-Arquitectura.html) — diagrama de arquitectura interactivo (HTML standalone, generado con el skill `archify`), con una vista **simplificada y agrupada por dominio** del sistema completo. Útil como mapa mental de alto nivel; para el detalle nodo-por-nodo de cada workflow, usar los archivos en `workflows/`.
+[../Diagramas/arquitectura-general.html](../Diagramas/arquitectura-general.html) — diagrama de arquitectura interactivo (HTML standalone, generado con el skill `archify`), con una vista **simplificada y agrupada por dominio** del sistema completo. Vive en una carpeta separada (`Rivas Motors/Diagramas/`) para no mezclarse con la documentación nodo-por-nodo de `workflows/`. Su especificación fuente (editable) está junto a él como `arquitectura-general.archify.json`. Útil como mapa mental de alto nivel; para el detalle de cada workflow, usar los archivos en `workflows/`.
 
 ## Deuda técnica detectada (resumen)
 
